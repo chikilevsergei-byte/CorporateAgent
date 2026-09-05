@@ -1,0 +1,43 @@
+# Скомпилированные файлы
+*.class
+
+# Папки сборки и вывода
+dist/
+output/
+build/
+target/
+
+# Сторонние библиотеки (скачиваются скриптом download_libs.ps1)
+lib/
+
+# Временные и тестовые файлы
+_analyze_shot*.java
+_analyze_shot*.class
+_test_*.java
+_test_*.class
+_ascii_map.java
+_ascii_map.class
+
+# Логи
+*.log
+
+# Данные, создаваемые при работе приложения
+chats.json
+databases.json
+db_logs.json
+skills.json
+tools.json
+backups/
+databases/
+
+# Изображения и прочие артефакты
+screenshot.png
+
+# Настройки IDE
+.idea/
+.vscode/
+*.iml
+
+# Системные файлы
+.DS_Store
+Thumbs.db
