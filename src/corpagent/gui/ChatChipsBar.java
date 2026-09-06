@@ -4,7 +4,6 @@ import corpagent.data.DataStore;
 import corpagent.util.Json;
 
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -15,12 +14,8 @@ import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -28,43 +23,67 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Панель chips над полем ввода чата.
- * Три чипа: «🧠 Навыки», «🔧 Инструменты», «🗄️ БД». По клику на чип открывается
- * выпадающий список с чекбоксами для выбора конкретных элементов.
+ * Ряд кнопок-селекторов: «БД», «Навыки», «Инструменты».
+ * Размещается в одной строке с кнопкой «Файлы» и единообразен с ней
+ * (одинаковый стиль styleSecondary, размер, отступы, без иконок).
  *
- * <p>Заменяет прежние три пары «чекбокс + дропдаун» в {@link ChatView}.</p>
+ * <p>По клику на кнопку открывается выпадающий список с чекбоксами
+ * для выбора конкретных элементов (существующая логика выбора).</p>
  */
 public class ChatChipsBar extends JPanel {
 
+    /** Единая ширина кнопки семейства (включая «Файлы»). */
+    public static final int BTN_WIDTH = 132;
+    /** Единая высота кнопки семейства. */
+    public static final int BTN_HEIGHT = 34;
+
     private final DataStore store;
 
-    private final ChipButton dbChip;
-    private final ChipButton skillsChip;
-    private final ChipButton toolsChip;
+    private final JButton dbButton;
+    private final JButton skillsButton;
+    private final JButton toolsButton;
+
+    private int dbCount = 0;
+    private int skillsCount = 0;
+    private int toolsCount = 0;
 
     private final Set<String> selectedDatabases = new LinkedHashSet<String>();
     private final Set<String> selectedSkills = new LinkedHashSet<String>();
     private final Set<String> selectedTools = new LinkedHashSet<String>();
 
+    /** Применяет к кнопке семейства единый стиль и размер. */
+    static JButton applyStyle(JButton b, String label) {
+        Ui.styleSecondary(b);
+        b.setText(label);
+        b.setFont(Ui.FONT_PLAIN);
+        b.setHorizontalAlignment(JButton.CENTER);
+        b.setVerticalAlignment(JButton.CENTER);
+        Dimension d = new Dimension(BTN_WIDTH, BTN_HEIGHT);
+        b.setPreferredSize(d);
+        b.setMinimumSize(d);
+        b.setMaximumSize(d);
+        return b;
+    }
+
     public ChatChipsBar(DataStore store) {
         this.store = store;
-        setLayout(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
         setOpaque(false);
 
-        dbChip = new ChipButton("🗄️", "БД");
-        skillsChip = new ChipButton("🧠", "Навыки");
-        toolsChip = new ChipButton("🔧", "Инструменты");
+        dbButton = applyStyle(new JButton(), "БД");
+        skillsButton = applyStyle(new JButton(), "Навыки");
+        toolsButton = applyStyle(new JButton(), "Инструменты");
 
-        dbChip.addActionListener(e -> showPicker(dbChip, "🗄️ Базы данных",
-                store.getDatabases(), selectedDatabases, "БД"));
-        skillsChip.addActionListener(e -> showPicker(skillsChip, "🧠 Навыки",
+        dbButton.addActionListener(e -> showPicker(dbButton, "Базы данных (SQLite)",
+                availableSqliteDatabases(), selectedDatabases, "БД"));
+        skillsButton.addActionListener(e -> showPicker(skillsButton, "Навыки",
                 store.getSkills(), selectedSkills, "навык"));
-        toolsChip.addActionListener(e -> showPicker(toolsChip, "🔧 Инструменты",
+        toolsButton.addActionListener(e -> showPicker(toolsButton, "Инструменты",
                 store.getTools(), selectedTools, "инструмент"));
 
-        add(dbChip);
-        add(skillsChip);
-        add(toolsChip);
+        add(dbButton);
+        add(skillsButton);
+        add(toolsButton);
     }
 
     /** Обновляет счётчики и убирает выбранные элементы, которых больше нет. */
@@ -72,11 +91,18 @@ public class ChatChipsBar extends JPanel {
         prune(selectedDatabases, store.getDatabases());
         prune(selectedSkills, store.getSkills());
         prune(selectedTools, store.getTools());
-        dbChip.setCount(selectedDatabases.size());
-        skillsChip.setCount(selectedSkills.size());
-        toolsChip.setCount(selectedTools.size());
+        dbCount = selectedDatabases.size();
+        skillsCount = selectedSkills.size();
+        toolsCount = selectedTools.size();
+        dbButton.setText(countSuffix("БД", dbCount));
+        skillsButton.setText(countSuffix("Навыки", skillsCount));
+        toolsButton.setText(countSuffix("Инструменты", toolsCount));
         revalidate();
         repaint();
+    }
+
+    private String countSuffix(String base, int n) {
+        return n > 0 ? base + " (" + n + ")" : base;
     }
 
     private void prune(Set<String> selected, Map<String, Object> available) {
@@ -94,6 +120,46 @@ public class ChatChipsBar extends JPanel {
 
     public Set<String> getSelectedDatabases() {
         return selectedDatabases;
+    }
+
+    /**
+     * Возвращает только выбранные подключения, пригодные для активной работы:
+     * тип SQLite и указан непустой файл/путь. Серверные типы (без драйверов)
+     * сюда не попадают и не допускаются к запуску в чате (Задача 2.1).
+     */
+    public Set<String> getSelectedSqliteDatabases() {
+        Set<String> out = new LinkedHashSet<String>();
+        for (String n : selectedDatabases) {
+            Map<String, Object> d = Json.asMap(store.getDatabases().get(n));
+            String type = d == null ? "sqlite" : Json.str(d, "type", "sqlite");
+            if (!"sqlite".equals(type)) {
+                continue;
+            }
+            String file = d == null ? "" : Json.str(d, "file", Json.str(d, "path", ""));
+            if (file == null || file.trim().isEmpty()) {
+                continue;
+            }
+            out.add(n);
+        }
+        return out;
+    }
+
+    /** Подключения SQLite с указанным файлом (для пикера БД). */
+    private Map<String, Object> availableSqliteDatabases() {
+        Map<String, Object> out = new java.util.LinkedHashMap<String, Object>();
+        for (Map.Entry<String, Object> e : store.getDatabases().entrySet()) {
+            Map<String, Object> d = Json.asMap(e.getValue());
+            String type = d == null ? "sqlite" : Json.str(d, "type", "sqlite");
+            if (!"sqlite".equals(type)) {
+                continue;
+            }
+            String file = d == null ? "" : Json.str(d, "file", Json.str(d, "path", ""));
+            if (file == null || file.trim().isEmpty()) {
+                continue;
+            }
+            out.put(e.getKey(), e.getValue());
+        }
+        return out;
     }
 
     public Set<String> getSelectedSkills() {
@@ -118,11 +184,11 @@ public class ChatChipsBar extends JPanel {
 
     // ==================== ПИКЕР ====================
 
-    private void showPicker(ChipButton anchor, String title, Map<String, Object> items,
+    private void showPicker(JButton anchor, String title, Map<String, Object> items,
                             Set<String> selected, String noun) {
         if (items == null || items.isEmpty()) {
             JPopupMenu empty = new JPopupMenu();
-            JLabel l = new JLabel("  Нет доступных " + noun + "ов. Добавьте в настройках (⚙️).  ");
+            JLabel l = new JLabel("  Нет доступных " + noun + "ов. Добавьте в настройках.  ");
             l.setFont(Ui.FONT_SMALL);
             l.setForeground(Ui.TEXT_GRAY);
             empty.add(l);
@@ -189,95 +255,5 @@ public class ChatChipsBar extends JPanel {
 
         popup.add(root);
         popup.show(anchor, 0, anchor.getHeight());
-    }
-
-    // ==================== ЧИП ====================
-
-    /** Кнопка-чип с иконкой, подписью и счётчиком выбранных элементов. */
-    private static class ChipButton extends JButton {
-        private final JLabel iconL;
-        private final JLabel textL;
-        private final JLabel countL;
-        private int count = 0;
-
-        ChipButton(String emoji, String label) {
-            setLayout(new FlowLayout(FlowLayout.LEFT, 4, 0));
-            setFocusPainted(false);
-            setBorderPainted(false);
-            setContentAreaFilled(false);
-            setOpaque(false);
-            setBackground(Ui.PRIMARY_SOFT);
-            setBorder(new Ui.RoundedBorder(Ui.BORDER_USER, 999, 1));
-            setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-
-            iconL = Ui.icon(emoji, 14);
-            textL = new JLabel(label);
-            textL.setFont(Ui.FONT_SMALL);
-            textL.setForeground(Ui.TEXT_DARK);
-            countL = new JLabel("");
-            countL.setFont(Ui.FONT_SMALL_BOLD);
-            countL.setForeground(Ui.PRIMARY_DARK);
-
-            add(iconL);
-            add(textL);
-            add(countL);
-
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    setBackground(Ui.PRIMARY_SOFT.darker());
-                }
-
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    setBackground(Ui.PRIMARY_SOFT);
-                }
-            });
-        }
-
-        /**
-         * Вычисляет компактный размер чипа по фактическим размерам дочерних
-         * меток. Переопределяем, потому что стандартный расчёт JButton с
-         * кастомным FlowLayout даёт ошибочно огромный размер (наблюдалось
-         * ~1070x1014px), который раздувает панель ввода и вытесняет область
-         * чата (JScrollPane в CENTER получает отрицательную высоту).
-         */
-        private Dimension compactSize() {
-            int w = 0;
-            int h = 0;
-            for (Component c : getComponents()) {
-                Dimension d = c.getPreferredSize();
-                w += d.width;
-                h = Math.max(h, d.height);
-            }
-            // зазоры между элементами (FlowLayout hgap=4) + внутренние отступы
-            int n = getComponentCount();
-            w += (n > 0 ? (n - 1) * 4 : 0) + 16;
-            h += 8;
-            return new Dimension(w, Math.max(h, 30));
-        }
-
-        @Override
-        public Dimension getPreferredSize() {
-            return compactSize();
-        }
-
-        @Override
-        public Dimension getMinimumSize() {
-            return compactSize();
-        }
-
-        @Override
-        public Dimension getMaximumSize() {
-            Dimension d = compactSize();
-            return new Dimension(Integer.MAX_VALUE, d.height);
-        }
-
-        void setCount(int n) {
-            this.count = n;
-            countL.setText(n > 0 ? " (" + n + ")" : "");
-            revalidate();
-            repaint();
-        }
     }
 }

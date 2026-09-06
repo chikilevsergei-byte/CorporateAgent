@@ -43,8 +43,12 @@ import java.util.Map;
  */
 public class DbConnectDialog extends JDialog {
 
+        /**
+     * Поддерживается только SQLite (без JDBC-драйверов серверные типы не работают).
+     * PostgreSQL/MySQL/MongoDB/MSSQL/Oracle полностью исключены из выбора.
+     */
     private static final String[] TYPES = {
-            "sqlite", "postgresql", "mysql", "mongodb", "mssql", "oracle"
+            "sqlite"
     };
 
     private final DataStore store;

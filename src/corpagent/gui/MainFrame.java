@@ -33,8 +33,12 @@ public class MainFrame extends JFrame {
     public static final String VIEW_CHAT = "chat";
     public static final String VIEW_SKILLS = "skills";
     public static final String VIEW_TOOLS = "tools";
-    public static final String VIEW_DB_MANAGER = "db_manager";
+        public static final String VIEW_DB_MANAGER = "db_manager";
     public static final String VIEW_DB_VIEWER = "db_viewer";
+
+    /** Версия сборки (используется в заголовке окна и для git-тега релиза). */
+    public static final String VERSION = "v3.1";
+
 
     private final Agent agent;
     private final DataStore store;
@@ -69,7 +73,7 @@ public class MainFrame extends JFrame {
         this.config = config;
         this.settings = settings;
 
-        setTitle("🤖 AI ассистент руководителя проектов — CorporateAgent v3");
+        setTitle("🤖 AI ассистент руководителя проектов — CorporateAgent v3 (" + VERSION + ")");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1280, 800);
         setMinimumSize(new Dimension(1000, 650));
@@ -114,7 +118,7 @@ public class MainFrame extends JFrame {
         header.setBackground(Ui.SURFACE);
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, Ui.BORDER),
-                new javax.swing.border.EmptyBorder(0, 24, 0, 24)));
+                new javax.swing.border.EmptyBorder(10, 24, 0, 20)));
         header.setPreferredSize(new Dimension(0, 64));
 
         JPanel titleRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 12, 0));
@@ -132,16 +136,15 @@ public class MainFrame extends JFrame {
 
         JPanel modelRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 16, 0));
         modelRow.setOpaque(false);
-        JLabel model = new JLabel("Модель: " + agent.getModel());
-        model.setForeground(Ui.TEXT_SECONDARY);
-        model.setFont(new Font("Segoe UI", Font.PLAIN, 14));
-        modelRow.add(model);
 
-        // Кликабельная шестерёнка настроек (icon button)
-        JButton settingsBtn = new JButton();
-        settingsBtn.setIcon(Ui.iconImage("⚙️", 18));
-        settingsBtn.setToolTipText("Настройки");
-        Ui.styleIcon(settingsBtn);
+        // Кнопка «Настройки» в стиле «Отправить» (зелёная, жирный текст) с шестерёнкой
+        JButton settingsBtn = new JButton("Настройки");
+        Ui.stylePrimary(settingsBtn);
+        settingsBtn.setForeground(Color.BLACK);
+        settingsBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        settingsBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        settingsBtn.setPreferredSize(new Dimension(148, 44));
+        settingsBtn.setMinimumSize(new Dimension(148, 44));
         settingsBtn.addActionListener(e -> openSettings());
         modelRow.add(settingsBtn);
 
@@ -274,6 +277,7 @@ public class MainFrame extends JFrame {
         chat.put("created", Utils.nowIso());
         chat.put("updated", Utils.nowIso());
         chat.put("messages", Json.newArray());
+        chat.put("pinned", Boolean.FALSE);
         store.putChat(chatId, chat);
         store.saveAll();
         currentChatId = chatId;

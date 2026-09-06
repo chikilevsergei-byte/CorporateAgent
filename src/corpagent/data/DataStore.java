@@ -108,6 +108,13 @@ public class DataStore {
             public int compare(Map.Entry<String, Map<String, Object>> a, Map.Entry<String, Map<String, Object>> b) {
                 String ua = Json.str(a.getValue(), "updated", "");
                 String ub = Json.str(b.getValue(), "updated", "");
+                {
+                    boolean pa = Json.bool(a.getValue(), "pinned", false);
+                    boolean pb = Json.bool(b.getValue(), "pinned", false);
+                    if (pa != pb) {
+                        return pa ? -1 : 1;
+                    }
+                }
                 return ub.compareTo(ua);
             }
         });

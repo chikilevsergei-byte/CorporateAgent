@@ -50,6 +50,63 @@ public class Agent {
         return config.getModel();
     }
 
+    /** Оценочный бюджет истории в «токенах»: в LLM уходит только хвост диалога
+     *  в пределах этой границы, более ранние сообщения отбрасываются.
+     *  Эвристика: токены ≈ длина_в_символах / 3.5. */
+    private static final double HISTORY_TOKEN_BUDGET = 20000.0;
+    private static final double CHARS_PER_TOKEN = 3.5;
+
+    /**
+     * Обрезает историю, оставляя лишь новейшие сообщения в рамках
+     * {@link #HISTORY_TOKEN_BUDGET}. Последнее сообщение всегда сохраняется.
+     * В начало обрезанного списка добавляется заметка о потере раннего контекста.
+     * Исходный список не изменяется.
+     */
+    private static List<Map<String, Object>> trimHistory(List<Map<String, Object>> history) {
+        if (history == null || history.isEmpty()) {
+            return history;
+        }
+        // Идём с конца (новейшие) и копим «токены» до исчерпания бюджета.
+        double acc = 0.0;
+        int keepFrom = history.size(); // индекс первого сохраняемого сообщения
+        for (int i = history.size() - 1; i >= 0; i--) {
+            Map<String, Object> m = history.get(i);
+            String role = Json.str(m, "role", "");
+            Object contentObj = m.get("content");
+            if (contentObj == null) {
+                contentObj = m.get("text");
+            }
+            double weight;
+            if ("tool".equals(role)) {
+                // Результаты вызовов инструментов почти не режем — важны для цепи вызовов.
+                weight = 250.0;
+            } else {
+                String text = contentObj == null ? "" : String.valueOf(contentObj);
+                weight = text.length() / CHARS_PER_TOKEN;
+            }
+            double next = acc + weight;
+            // Последнее сообщение сохраняем всегда, даже если оно больше бюджета.
+            if (next > HISTORY_TOKEN_BUDGET && i < history.size() - 1) {
+                break;
+            }
+            acc = next;
+            keepFrom = i;
+        }
+        if (keepFrom <= 0) {
+            return history;
+        }
+        List<Map<String, Object>> trimmed = new ArrayList<Map<String, Object>>();
+        for (int i = keepFrom; i < history.size(); i++) {
+            trimmed.add(history.get(i));
+        }
+        Map<String, Object> note = Json.newObject();
+        note.put("role", "user");
+        note.put("content", "[Более ранние сообщения разговора опущены для экономии объёма контекста. "
+                + "При необходимости освежите ключевые факты в этом сообщении.]");
+        trimmed.add(0, note);
+        return trimmed;
+    }
+
     /** Результат обработки задачи. */
     public static class TaskResult {
         public String response;
@@ -88,12 +145,15 @@ public class Agent {
             systemPrompt += "\n\nАктивные инструменты:\n" + toolsContext;
         }
         if (dbContext != null && !dbContext.isEmpty()) {
-            systemPrompt += "\n\nУ вас есть доступ к базе данных. Структура и данные БД:\n" + dbContext
+                        systemPrompt += "\n\nУ вас есть доступ к базе данных. Структура и данные БД (обзор):\n" + dbContext
                     + "\n\nКРИТИЧЕСКИ ВАЖНЫЕ ПРАВИЛА РАБОТЫ С БД:\n"
-                    + "1. АНАЛИЗ ДАННЫХ: Если пользователь просит изучить БД или рассказать о проекте — АНАЛИЗИРУЙТЕ РЕАЛЬНЫЕ ДАННЫЕ из таблиц.\n"
-                    + "2. АВТОМАТИЧЕСКОЕ ОБНОВЛЕНИЕ БД: Если пользователь просит изменить данные — ГЕНЕРИРУЙТЕ SQL-запросы в блоках ```sql ... ```. Эти запросы будут автоматически выполнены.\n"
-                    + "3. КОНТЕКСТНОЕ НАПОЛНЕНИЕ: Если в разговоре упоминаются новые данные — предлагайте SQL для их добавления.\n"
-                    + "4. НЕ СОЗДАВАЙТЕ новую схему БД, если пользователь не просит об этом явно.";
+                    + "1. АНАЛИЗ ДАННЫХ: При вопросе о данных — СНАЧАЛА проверяйте фактические данные "
+                    + "инструментами db_query (SELECT/PRAGMA и т.п.), не полагайтесь только на обзор выше.\n"
+                    + "2. ИЗМЕНЕНИЯ: Для любого изменения данных используйте ТОЛЬКО функцию db_execute "
+                    + "(INSERT/UPDATE/DELETE/CREATE). В UPDATE и DELETE ОБЯЗАТЕЛЬНО указывайте WHERE.\n"
+                    + "3. ПОРЯДОК ЗАПИСИ: сначала db_query (посмотреть структуру/текущие данные), затем "
+                    + "точечный db_execute, после чего подтвердите пользователю, какие строки/что изменилось.\n"
+                    + "4. НЕ создавайте новую схему БД, если пользователь явно этого не просит.";
         }
 
         String fullMessage = message;
@@ -175,21 +235,43 @@ public class Agent {
                     historyWithContext.add(userMsg);
                 }
 
-                String response;
-                boolean toolsActive = toolsContext != null && !toolsContext.isEmpty()
+                // Не отправляем всю историю целиком: ограничиваем объём контекста
+                // новейшими сообщениями (старые отбрасываются по бюджету токенов).
+                historyWithContext = trimHistory(historyWithContext);
+
+                                String response;
+                // Function calling активен при выбранной БД или включённых инструментах.
+                // Активная БД дополнительно подключает управляемые функции db_query/db_execute (A2):
+                // модель читает схему/данные и пишет точечно вместо хрупкого ```sql```-парсинга.
+                boolean dbPathOk = dbPath != null && !dbPath.trim().isEmpty() && Utils.exists(dbPath);
+                boolean dbActiveTool = dbPathOk && dbName != null;
+                boolean userToolsOn = toolsContext != null && !toolsContext.isEmpty()
                         && !toolRegistry.buildToolsArray().isEmpty();
+                boolean toolsActive = dbActiveTool || userToolsOn;
                 if (toolsActive) {
-                    // Function calling: инструменты доступны модели как функции.
                     toolExecutor.setActiveDatabase(dbPath, dbName);
                     toolExecutor.resetExecutedTools();
-                    List<Object> tools = toolRegistry.buildToolsArray();
+                    List<Object> tools = new ArrayList<Object>();
+                    if (userToolsOn) {
+                        tools.addAll(toolRegistry.buildToolsArray());
+                    }
+                    if (dbActiveTool) {
+                        tools.addAll(toolExecutor.systemDbTools());
+                    }
                     response = llm.callWithTools(historyWithContext, systemPrompt, tools,
                             new DeepSeekClient.ToolCallHandler() {
                                 @Override
                                 public String execute(String name, Map<String, Object> arguments) {
+                                    if ("db_query".equals(name) || "db_execute".equals(name)) {
+                                        toolExecutor.recordExecuted(name);
+                                        return toolExecutor.executeBuiltinSql(name, arguments);
+                                    }
                                     return toolExecutor.execute(name, arguments);
                                 }
                             });
+                    // Запись уже могла быть выполнена управляемой функцией db_execute,
+                    // поэтому повторный авто-парсинг ```sql``` из текста ответа отключаем.
+                    autoUpdateDb = false;
                 } else {
                     response = llm.call(historyWithContext, systemPrompt);
                 }
@@ -292,8 +374,10 @@ public class Agent {
 
     /**
      * Формирует контекст БД со схемой и примерами данных для выбранных БД.
+     * Примеры данных выбираются в первую очередь по таблицам, релевантным
+     * {@code userMessage} (если он не пуст), иначе — по первым таблицам.
      */
-    public String buildDbContext(List<String> selectedDbs) {
+    public String buildDbContext(List<String> selectedDbs, String userMessage) {
         List<String> parts = new ArrayList<String>();
         for (String dbName : selectedDbs) {
             Map<String, Object> dbInfo = store.getDatabase(dbName);
@@ -308,11 +392,9 @@ public class Agent {
             parts.add("=== База данных: " + dbName + " ===\n" + schema);
 
             List<String> tables = SqliteHelper.getTables(dbPath);
-            int count = 0;
-            for (String table : tables) {
-                if (count >= 8) {
-                    break;
-                }
+            int maxTables = 8;
+            List<String> chosen = chooseSampleTables(userMessage, dbPath, tables, maxTables);
+            for (String table : chosen) {
                 Map<String, Object> sample = SqliteHelper.getSampleData(dbPath, table, 5);
                 if (sample.containsKey("rows")) {
                     parts.add("\n--- Пример данных из таблицы '" + table + "' ---");
@@ -333,9 +415,70 @@ public class Agent {
                         parts.add("  (таблица пуста)");
                     }
                 }
-                count++;
             }
         }
         return parts.isEmpty() ? null : String.join("\n\n", parts);
+    }
+
+    /**
+     * Выбирает до {@code maxTables} таблиц для показа примеров данных.
+     * При непустом запросе сначала берутся таблицы, наиболее релевантные ему
+     * (по совпадению в имени и именах колонок), затем — по порядку схемы.
+     */
+    private static List<String> chooseSampleTables(String userMessage, String dbPath,
+                                                   List<String> tables, int maxTables) {
+        List<String> result = new ArrayList<String>();
+        if (tables.size() <= maxTables) {
+            return new ArrayList<String>(tables);
+        }
+        String q = userMessage == null ? "" : userMessage.toLowerCase();
+        if (q.trim().isEmpty()) {
+            return new ArrayList<String>(tables.subList(0, maxTables));
+        }
+        // Токены запроса: сочетания букв/цифр/«_», длиной от 3 символов.
+        java.util.List<String> tokens = new ArrayList<String>();
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("[\\wа-яёА-ЯЁ]{3,}")
+                .matcher(q);
+        while (m.find()) {
+            tokens.add(m.group().toLowerCase());
+        }
+        if (tokens.isEmpty()) {
+            return new ArrayList<String>(tables.subList(0, maxTables));
+        }
+
+        // Плоская строка «таблица: колонки» для оценки.
+        java.util.List<java.util.Map<String, Object>> scored =
+                new ArrayList<java.util.Map<String, Object>>();
+        for (String table : tables) {
+            StringBuilder hay = new StringBuilder(table.toLowerCase());
+            for (String col : SqliteHelper.getTableColumns(dbPath, table)) {
+                hay.append(' ').append(col.toLowerCase());
+            }
+            double score = 0.0;
+            for (String tok : tokens) {
+                if (hay.toString().contains(tok)) {
+                    score += 1.0;
+                }
+            }
+            java.util.Map<String, Object> e = Json.newObject();
+            e.put("table", table);
+            e.put("score", Double.valueOf(score));
+            scored.add(e);
+        }
+        // Сначала высокорелевантные, у остальных сохраняем исходный порядок.
+        java.util.Collections.sort(scored, new java.util.Comparator<java.util.Map<String, Object>>() {
+            @Override
+            public int compare(java.util.Map<String, Object> a, java.util.Map<String, Object> b) {
+                return Double.compare(((Number) b.get("score")).doubleValue(),
+                        ((Number) a.get("score")).doubleValue());
+            }
+        });
+        for (java.util.Map<String, Object> e : scored) {
+            if (result.size() >= maxTables) {
+                break;
+            }
+            result.add(Json.str(e, "table"));
+        }
+        return result;
     }
 }

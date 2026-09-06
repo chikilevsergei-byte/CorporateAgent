@@ -17,8 +17,8 @@ public class Settings {
         String content = Utils.readFile(settingsPath);
         if (content == null) {
             this.data = Json.newObject();
-            // Значения по умолчанию
-            this.data.put("auto_update_db", true);
+                        // Значения по умолчанию
+            this.data.put("auto_update_db", false); // выключено по умолчанию (безопаснее)
             this.data.put("theme", "green");
             this.data.put("show_usage_in_chat", true);
         } else {
@@ -26,9 +26,9 @@ public class Settings {
         }
     }
 
-    /** Глобальный переключатель автообновления БД (ранее был в сайдбаре). */
+        /** Глобальный переключатель автообновления БД (ранее был в сайдбаре). */
     public boolean isAutoUpdateDb() {
-        return Json.bool(data, "auto_update_db", true);
+        return Json.bool(data, "auto_update_db", false);
     }
 
     public void setAutoUpdateDb(boolean value) {

@@ -36,8 +36,10 @@ public class ToolExecutor {
     private String activeDbPath;
     private String activeDbName;
 
-    // Имена реально выполненных инструментов за последний вызов (для визуализации).
-    private final java.util.List<String> executedTools = new java.util.ArrayList<String>();
+            // Имена реально выполненных инструментов за последний вызов (для визуализации).
+    // Потокобезопасен: может заполняться из фонового потока (SwingWorker) LLM-цикла.
+    private final java.util.List<String> executedTools =
+            java.util.Collections.synchronizedList(new java.util.ArrayList<String>());
 
     public ToolExecutor(DataStore store, ToolRegistry registry) {
         this.store = store;
@@ -50,18 +52,33 @@ public class ToolExecutor {
         this.activeDbName = dbName;
     }
 
+        /** Возвращает имя активной БД. */
     public String getActiveDbName() {
         return activeDbName;
     }
 
-    /** Сбрасывает список выполненных инструментов (вызывается перед новым вызовом). */
+    /** Учитывает выполнение инструмента (счётчик использования + список для визуализации). */
+    public void recordExecuted(String name) {
+        store.bumpToolUsage(name);
+        synchronized (executedTools) {
+            if (!executedTools.contains(name)) {
+                executedTools.add(name);
+            }
+        }
+    }
+
+        /** Сбрасывает список выполненных инструментов (вызывается перед новым вызовом). */
     public void resetExecutedTools() {
-        executedTools.clear();
+        synchronized (executedTools) {
+            executedTools.clear();
+        }
     }
 
     /** Возвращает список имён инструментов, реально выполненных с момента последнего сброса. */
     public java.util.List<String> getExecutedTools() {
-        return new java.util.ArrayList<String>(executedTools);
+        synchronized (executedTools) {
+            return new java.util.ArrayList<String>(executedTools);
+        }
     }
 
     /**
@@ -102,9 +119,11 @@ public class ToolExecutor {
             result = "Ошибка выполнения: " + e.getMessage();
         }
 
-        store.bumpToolUsage(name);
-        if (!executedTools.contains(name)) {
-            executedTools.add(name);
+                store.bumpToolUsage(name);
+        synchronized (executedTools) {
+            if (!executedTools.contains(name)) {
+                executedTools.add(name);
+            }
         }
         return icon + " Результат инструмента «" + name + "»:\n" + result;
     }
@@ -198,8 +217,9 @@ public class ToolExecutor {
 
     // ==================== SQL ====================
 
-    private String executeSql(Map<String, Object> tool, Map<String, Object> args) {
-        if (activeDbPath == null || !Utils.exists(activeDbPath)) {
+        private String executeSql(Map<String, Object> tool, Map<String, Object> args) {
+        String q = activeDbPath == null ? "" : activeDbPath;
+        if (q.isEmpty() || !Utils.exists(activeDbPath)) {
             return "Ошибка: не выбрана активная база данных для SQL-инструмента. "
                     + "Выберите БД в чипах над полем ввода.";
         }
@@ -211,6 +231,120 @@ public class ToolExecutor {
         if (!qr.success) {
             return "Ошибка SQL: " + qr.error;
         }
+        return formatResult(qr);
+    }
+
+    /** Есть ли выбранная и существующая активная БД для встроенных db-функций. */
+    public boolean hasActiveDatabase() {
+        return activeDbPath != null && !activeDbPath.trim().isEmpty() && Utils.exists(activeDbPath);
+    }
+
+    /**
+     * Выполняет встроенную (системную) функцию управления БД — {@code db_query}
+     * (только чтение) или {@code db_execute} (защищённая запись). Иные имена
+     * возвращают ошибку «не найдена». Предназначено для вызова из Agent.
+     */
+    public String executeBuiltinSql(String functionName, Map<String, Object> arguments) {
+        if (functionName == null) {
+            return "Ошибка: пустое имя функции.";
+        }
+        if (!hasActiveDatabase()) {
+            return "Ошибка: не выбрана активная база данных. Выберите БД в чипах над полем ввода.";
+        }
+        Map<String, Object> args = arguments == null ? new java.util.HashMap<String, Object>() : arguments;
+        Object sqlObj = args.get("sql");
+        String sql = sqlObj == null ? "" : String.valueOf(sqlObj);
+        if (sql.trim().isEmpty()) {
+            return "Ошибка: параметр 'sql' пуст.";
+        }
+        String upper = sql.trim().toUpperCase();
+
+        if ("db_query".equals(functionName)) {
+            if (!isReadStatement(upper)) {
+                return "Ошибка: db_query допускает только чтение (SELECT/PRAGMA/WITH/EXPLAIN). "
+                        + "Для записи используйте db_execute.";
+            }
+            SqliteHelper.QueryResult qr = SqliteHelper.executeQuery(activeDbPath, sql);
+            if (!qr.success) {
+                return "Ошибка SQL: " + qr.error;
+            }
+            return formatResult(qr);
+        }
+        if ("db_execute".equals(functionName)) {
+            String guardMsg = guardWrite(upper);
+            if (guardMsg != null) {
+                return "Ошибка: " + guardMsg;
+            }
+            SqliteHelper.QueryResult qr = SqliteHelper.executeQuery(activeDbPath, sql);
+            if (!qr.success) {
+                return "Ошибка SQL: " + qr.error;
+            }
+            return formatResult(qr);
+        }
+        return "Ошибка: системная функция '" + functionName + "' не найдена.";
+    }
+
+    /** Читающие операторы, разрешённые db_query. */
+    private static boolean isReadStatement(String upper) {
+        return upper.startsWith("SELECT") || upper.startsWith("PRAGMA")
+                || upper.startsWith("WITH") || upper.startsWith("EXPLAIN");
+    }
+
+    /** Возвращает текст причины отклонения записи, если команда небезопасна (иначе null). */
+    private static String guardWrite(String upper) {
+        String first = firstKeyword(upper);
+        // Массовые обновления/удаления без WHERE — запрещено.
+        if (first.equals("UPDATE") || first.equals("DELETE")) {
+            if (!hasSqlWhere(upper)) {
+                return (first.equals("UPDATE") ? "UPDATE" : "DELETE")
+                        + " без WHERE запрещён (массовое изменение). Уточните условие.";
+            }
+        }
+        // Запрещаем управление транзакциями и подключением в db_execute.
+        if (first.equals("BEGIN") || first.equals("COMMIT") || first.equals("ROLLBACK")
+                || first.equals("PRAGMA")) {
+            return first + " не допускается через db_execute (dbo).";
+        }
+        return null;
+    }
+
+    /** Первое ключевое слово оператора (до пробела/скобки), без учёта регистра. */
+    private static String firstKeyword(String upper) {
+        StringBuilder kw = new StringBuilder();
+        for (int i = 0; i < upper.length(); i++) {
+            char c = upper.charAt(i);
+            if (Character.isLetter(c)) {
+                kw.append(c);
+            } else {
+                break;
+            }
+        }
+        return kw.toString();
+    }
+
+    /** Чувствительная к кавычкам проверка наличия WHERE в операторе. */
+    private static boolean hasSqlWhere(String upperQuery) {
+        boolean inString = false;
+        for (int i = 0; i < upperQuery.length(); i++) {
+            char c = upperQuery.charAt(i);
+            if (c == '\'') {
+                inString = !inString;
+            } else if (!inString && startsAt(upperQuery, i, "WHERE")) {
+                int after = i + 5;
+                if (after >= upperQuery.length() || !Character.isLetterOrDigit(upperQuery.charAt(after))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean startsAt(String s, int idx, String token) {
+        return s.regionMatches(idx, token, 0, token.length());
+    }
+
+    /** Форматирует результат запроса в компактный текст для модели. */
+    private static String formatResult(SqliteHelper.QueryResult qr) {
         StringBuilder sb = new StringBuilder();
         if (!qr.columns.isEmpty()) {
             sb.append("Колонки: ").append(String.join(", ", qr.columns)).append("\n");
@@ -230,6 +364,53 @@ public class ToolExecutor {
             sb.append("Затронуто строк: ").append(qr.rowsAffected);
         }
         return sb.toString();
+    }
+
+    /**
+     * Возвращает описания встроенных функций {@code db_query} и {@code db_execute}
+     * для передачи в tools-массив (формат OpenAI function). Пусто, если нет активной БД.
+     * Актуальные схемы/описания построены так, чтобы модель могла сначала прочитать,
+     * затем точечно записать.
+     */
+    public List<java.util.Map<String, Object>> systemDbTools() {
+        java.util.List<java.util.Map<String, Object>> out = new ArrayList<java.util.Map<String, Object>>();
+        if (!hasActiveDatabase()) {
+            return out;
+        }
+        String dbDesc = " (БД: " + (activeDbName == null ? activeDbPath : activeDbName) + ")";
+        out.add(systemTool("db_query",
+                "[" + dbDesc + "] Выполнить ЗАПРОС ТОЛЬКО НА ЧТЕНИЕ в активной БД. "
+                + "Используйте для просмотра схемы (PRAGMA table_info(...)), списка таблиц и данных (SELECT). "
+                + "Параметр sql — единственный SQL-оператор чтения.",
+                "SELECT ...; или PRAGMA ..."));
+        out.add(systemTool("db_execute",
+                "[" + dbDesc + "] Выполнить БЕЗОПАСНУЮ ЗАПИСЬ в активной БД (INSERT/UPDATE/DELETE/CREATE). "
+                + "UPDATE и DELETE обязаны иметь WHERE. Для чтения используйте db_query. "
+                + "После записи подтвердите пользователю, что изменилось.",
+                "UPDATE table SET col='val' WHERE id=..."));
+        return out;
+    }
+
+    private static java.util.Map<String, Object> systemTool(String name, String description, String example) {
+        java.util.Map<String, Object> entry = Json.newObject();
+        entry.put("type", "function");
+        java.util.Map<String, Object> fn = Json.newObject();
+        fn.put("name", name);
+        fn.put("description", description + " Пример: " + example);
+        java.util.Map<String, Object> parameters = Json.newObject();
+        parameters.put("type", "object");
+        java.util.Map<String, Object> props = new java.util.LinkedHashMap<String, Object>();
+        java.util.Map<String, Object> sqlProp = Json.newObject();
+        sqlProp.put("type", "string");
+        sqlProp.put("description", "Один валидный SQL-оператор на языке SQLite.");
+        props.put("sql", sqlProp);
+        parameters.put("properties", props);
+        java.util.List<String> req = new ArrayList<String>();
+        req.add("sql");
+        parameters.put("required", req);
+        fn.put("parameters", parameters);
+        entry.put("function", fn);
+        return entry;
     }
 
     // ==================== ХЕЛПЕРЫ ====================

@@ -87,6 +87,7 @@ public final class Ui {
     public static final Color TEXT_DARK = new Color(17, 24, 39);      // #111827
     public static final Color TEXT_GRAY = new Color(107, 114, 128);   // #6b7280
     public static final Color WHITE = Color.WHITE;
+    public static final Color BLACK = new Color(0, 0, 0);            // #000000
 
     // ==================== ШРИФТЫ ====================
     public static final String FONT = "Segoe UI";
@@ -194,60 +195,59 @@ public final class Ui {
 
     // ==================== КНОПКИ ====================
 
-    /**
+
+
+
+
+            /**
      * Применяет современный стиль к кнопке (обратная совместимость).
      *
-     * @param primary true — зелёная заливка с белым текстом; false — светлая кнопка
+     * @param primary true — зелёная заливка с чёрным текстом; false — светлая кнопка
      */
     public static void styleButton(JButton b, boolean primary) {
         if (primary) {
             stylePrimary(b);
         } else {
             styleSecondary(b);
-        }
+                }
     }
 
-    /** Primary-кнопка: зелёная заливка, белый текст, скругление, hover. */
+    /** Primary-кнопка: зелёная заливка, чёрный текст, скругление, hover. */
     public static void stylePrimary(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(WHITE);
+        b.setForeground(BLACK);
         b.setBackground(PRIMARY);
         b.setBorder(new RoundedBorder(PRIMARY, RADIUS_BTN, 1));
-        // ВАЖНО: компонент должен быть НЕПРОЗРАЧНЫМ и рисовать свой фон в paintComponent
-        // (ДО текста). Раньше фон закрашивался в RoundedBorder.paintBorder, который
-        // рисуется ПОСЛЕ текста и полностью перекрывал его — текст был невидим.
         b.setOpaque(true);
         b.setContentAreaFilled(true);
         b.setFocusable(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setMargin(new Insets(7, 16, 7, 16));
-        installHover(b, PRIMARY, PRIMARY_HOVER, PRIMARY_ACTIVE, WHITE);
+        installHover(b, PRIMARY, PRIMARY_HOVER, PRIMARY_ACTIVE, BLACK);
     }
 
-    /** Secondary-кнопка: прозрачный фон, серая рамка, тёмный текст. */
+        /** Secondary-кнопка: прозрачный фон, серая рамка, чёрный текст. */
     public static void styleSecondary(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(new Color(55, 65, 81)); // #374151
+        b.setForeground(BLACK);
         b.setBackground(SURFACE);
         b.setBorder(new RoundedBorder(BORDER_INPUT, RADIUS_BTN, 1));
-        // Непрозрачный фон рисуется в paintComponent ДО текста (см. stylePrimary).
         b.setOpaque(true);
         b.setContentAreaFilled(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setMargin(new Insets(7, 16, 7, 16));
-        installHover(b, SURFACE, HOVER, new Color(229, 231, 235), new Color(55, 65, 81));
+        installHover(b, SURFACE, HOVER, new Color(229, 231, 235), BLACK);
     }
 
     /** Danger-кнопка: прозрачный фон, красный текст, hover с красной подложкой. */
-    public static void styleDanger(JButton b) {
+        public static void styleDanger(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
         b.setForeground(ERROR);
         b.setBackground(SURFACE);
         b.setBorder(new RoundedBorder(new Color(252, 165, 165), RADIUS_BTN, 1));
-        // Непрозрачный фон рисуется в paintComponent ДО текста (см. stylePrimary).
         b.setOpaque(true);
         b.setContentAreaFilled(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -255,18 +255,18 @@ public final class Ui {
         installHover(b, SURFACE, ERROR_SOFT, new Color(254, 202, 202), ERROR);
     }
 
-    /** Icon-кнопка: квадратная, без рамки, hover-подложка. */
+    /** Icon-кнопка: квадратная, без рамки, hover-подложка, чёрный текст/иконка. */
     public static void styleIcon(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(TEXT);
+        b.setForeground(BLACK);
         b.setBackground(new Color(0, 0, 0, 0));
         b.setBorder(new EmptyBorder(6, 6, 6, 6));
         b.setOpaque(false);
         b.setContentAreaFilled(false);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setPreferredSize(new Dimension(36, 36));
-        installHover(b, new Color(0, 0, 0, 0), HOVER, new Color(229, 231, 235), TEXT);
+        installHover(b, new Color(0, 0, 0, 0), HOVER, new Color(229, 231, 235), BLACK);
     }
 
     /** Длительность плавного перехода цвета (мс). */

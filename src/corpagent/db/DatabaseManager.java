@@ -324,13 +324,17 @@ public class DatabaseManager {
             if (!isDml) {
                 continue;
             }
-            if (queryUpper.startsWith("DELETE") && !queryUpper.contains("WHERE")) {
-                Map<String, Object> m = Json.newObject();
-                m.put("query", query);
-                m.put("status", "skipped");
-                m.put("reason", "DELETE без WHERE - слишком опасно");
-                updates.add(m);
-                continue;
+                        if (queryUpper.startsWith("DELETE") || queryUpper.startsWith("UPDATE")) {
+                boolean hasWhere = hasSqlWhereClause(queryUpper);
+                if (!hasWhere) {
+                    Map<String, Object> m = Json.newObject();
+                    m.put("query", query);
+                    m.put("status", "skipped");
+                    m.put("reason", (queryUpper.startsWith("UPDATE") ? "UPDATE" : "DELETE")
+                            + " без WHERE - слишком опасно");
+                    updates.add(m);
+                    continue;
+                }
             }
             SqliteHelper.QueryResult result = SqliteHelper.executeQuery(dbPath, query);
             Map<String, Object> m = Json.newObject();
@@ -347,6 +351,24 @@ public class DatabaseManager {
             updates.add(m);
         }
         return updates;
+    }
+
+    /** Чувствительная к кавычкам проверка наличия WHERE в SQL-операторе. */
+    private static boolean hasSqlWhereClause(String upperQuery) {
+        boolean inString = false;
+        for (int i = 0; i < upperQuery.length(); i++) {
+            char c = upperQuery.charAt(i);
+            if (c == '\'') {
+                inString = !inString;
+            } else if (!inString && upperQuery.startsWith("WHERE", i)) {
+                // Учитываем границы слова, чтобы не зацепить, например, "WHEREVER".
+                int after = i + 5;
+                if (after >= upperQuery.length() || !Character.isLetterOrDigit(upperQuery.charAt(after))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Извлекает SQL-запросы из текста ответа агента. */

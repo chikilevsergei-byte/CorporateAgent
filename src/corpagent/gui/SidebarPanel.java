@@ -12,6 +12,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -44,6 +45,8 @@ public class SidebarPanel extends JPanel {
         // Кнопка «Новый чат»
         JButton newChatBtn = new JButton("Новый чат");
         Ui.stylePrimary(newChatBtn);
+        newChatBtn.setForeground(Color.BLACK);
+        newChatBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
         newChatBtn.setIcon(Ui.iconImage("➕", 16));
         newChatBtn.setIconTextGap(8);
         newChatBtn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
@@ -125,7 +128,8 @@ public class SidebarPanel extends JPanel {
         left.add(name);
         row.add(left, BorderLayout.CENTER);
 
-        JButton menu = new JButton("⋮");
+        JButton menu = new JButton("...");
+        menu.setToolTipText("Chat menu");
         menu.setBorderPainted(false);
         menu.setFocusPainted(false);
         menu.setContentAreaFilled(false);
@@ -133,12 +137,32 @@ public class SidebarPanel extends JPanel {
         menu.setFont(Ui.FONT_SMALL_BOLD);
         menu.setForeground(Ui.TEXT_MUTED);
         menu.addActionListener(e -> showChatMenu(chatId, title));
-        row.add(menu, BorderLayout.EAST);
+
+        Map<String, Object> chatRec = frame.getStore().getChat(chatId);
+        boolean pinned = chatRec != null && Boolean.TRUE.equals(chatRec.get("pinned"));
+        JButton pinBtn = new JButton("pin");
+        pinBtn.setToolTipText(pinned ? "Unpin from top" : "Pin chat on top");
+        pinBtn.setBorderPainted(false);
+        pinBtn.setFocusPainted(false);
+        pinBtn.setContentAreaFilled(false);
+        pinBtn.setOpaque(false);
+        pinBtn.setFont(Ui.FONT_SMALL_BOLD);
+        pinBtn.setForeground(pinned ? Ui.PRIMARY : Ui.TEXT_MUTED);
+        pinBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        menu.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        final boolean fPinned = pinned;
+        pinBtn.addActionListener(e -> togglePin(chatId, fPinned));
+
+        JPanel actions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 4, 0));
+        actions.setOpaque(false);
+        actions.add(pinBtn);
+        actions.add(menu);
+        row.add(actions, BorderLayout.EAST);
         return row;
     }
 
     private void showChatMenu(String chatId, String currentTitle) {
-        String[] options = {"✏️ Переименовать", "🗑️ Удалить", "Отмена"};
+        String[] options = {"Переименовать", "Удалить", "Отмена"};
         int choice = JOptionPane.showOptionDialog(this, "Чат: " + currentTitle, "Меню чата",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[2]);
         if (choice == 0) {
@@ -166,6 +190,17 @@ public class SidebarPanel extends JPanel {
                 frame.getChatView().refresh();
             }
         }
+    }
+
+    private void togglePin(String chatId, boolean currentlyPinned) {
+        Map<String, Object> c = frame.getStore().getChat(chatId);
+        if (c == null) {
+            return;
+        }
+        c.put("pinned", Boolean.valueOf(!currentlyPinned));
+        frame.getStore().saveAll();
+        refresh();
+        frame.getChatView().refresh();
     }
 
     private JLabel emptyLabel(String text) {

@@ -61,20 +61,29 @@ public class SettingsPanelDatabases extends JPanel {
         content.add(topRow);
         content.add(Box.createVerticalStrut(4));
 
-        JLabel hint = new JLabel("Подключение баз данных разных типов (SQLite, PostgreSQL, MySQL, MongoDB, MSSQL, Oracle).");
+                JLabel hint = new JLabel("Подключаются базы данных SQLite (файлы .db). "
+                + "Серверные СУБД (PostgreSQL, MySQL и т.п.) не используются.");
         hint.setFont(Ui.FONT_SMALL);
         hint.setForeground(Ui.TEXT_GRAY);
         content.add(hint);
         content.add(Box.createVerticalStrut(12));
 
         Map<String, Object> dbs = store.getDatabases();
-        if (dbs.isEmpty()) {
+        Map<String, Object> sqliteDbs = new java.util.LinkedHashMap<String, Object>();
+        for (Map.Entry<String, Object> e : dbs.entrySet()) {
+            Map<String, Object> v = Json.asMap(e.getValue());
+            String type = v == null ? "sqlite" : Json.str(v, "type", "sqlite");
+            if ("sqlite".equals(type)) {
+                sqliteDbs.put(e.getKey(), e.getValue());
+            }
+        }
+        if (sqliteDbs.isEmpty()) {
             JLabel empty = new JLabel("Пока нет подключённых БД. Нажмите «Добавить БД», чтобы подключить первую.");
             empty.setFont(Ui.FONT_PLAIN);
             empty.setForeground(Ui.TEXT_GRAY);
             content.add(empty);
         } else {
-            for (Map.Entry<String, Object> e : dbs.entrySet()) {
+            for (Map.Entry<String, Object> e : sqliteDbs.entrySet()) {
                 content.add(dbCard(e.getKey(), Json.asMap(e.getValue())));
                 content.add(Box.createVerticalStrut(8));
             }
@@ -262,16 +271,24 @@ public class SettingsPanelDatabases extends JPanel {
         }
     }
 
-    private void deleteDatabase(String name) {
-        int c = JOptionPane.showConfirmDialog(this, "Удалить подключение '" + name + "'?",
-                "Подтверждение", JOptionPane.YES_NO_OPTION);
-        if (c == JOptionPane.YES_OPTION) {
+        private void deleteDatabase(String name) {
+            int c = JOptionPane.showConfirmDialog(this, "Удалить подключение '" + name + "'?\n"
+                            + "Файл базы данных и журнал операций будут удалены безвозвратно.",
+                    "Подтверждение", JOptionPane.YES_NO_OPTION);
+            if (c != JOptionPane.YES_OPTION) {
+                return;
+            }
+            Map<String, Object> db = Json.asMap(store.getDatabases().get(name));
+            String file = db == null ? "" : Json.str(db, "file", Json.str(db, "path"));
             store.removeDatabase(name);
+            store.removeDbLogs(name);
             store.saveAll();
+            if (!file.trim().isEmpty()) {
+                Utils.delete(file.trim());
+            }
             refresh();
             frame.refreshSidebar();
         }
-    }
 
     private static String escape(String s) {
         return s == null ? "" : s.replace("&", "&").replace("<", "<").replace(">", ">");

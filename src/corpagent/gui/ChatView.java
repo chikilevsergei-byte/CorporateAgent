@@ -72,26 +72,20 @@ public class ChatView extends JPanel {
         panel.setBackground(Ui.SURFACE);
         panel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.BORDER),
-                new EmptyBorder(10, 12, 10, 12)));
+                new EmptyBorder(10, 12, 10, 20)));
 
-        // Chips-панель выбора БД/навыков/инструментов (вместо чекбоксов+дропдаунов)
-        JPanel options = new JPanel(new BorderLayout());
-        options.setOpaque(false);
-        options.add(chipsBar, BorderLayout.WEST);
-
-        JPanel bottom = new JPanel(new BorderLayout());
+                JPanel bottom = new JPanel(new BorderLayout());
         bottom.setBorder(new EmptyBorder(8, 0, 0, 0));
         bottom.setOpaque(false);
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        // Ряд кнопок: «Файлы» и селекторы БД/Навыки/Инструменты одним семейством
+        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         left.setOpaque(false);
-        JButton attachBtn = new JButton("Файлы");
-        Ui.styleSecondary(attachBtn);
-        attachBtn.setIcon(Ui.iconImage("📎", 16));
-        attachBtn.setHorizontalTextPosition(SwingConstants.RIGHT);
-        attachBtn.setIconTextGap(6);
+        JButton attachBtn = new JButton();
+        ChatChipsBar.applyStyle(attachBtn, "Файлы");
         attachBtn.addActionListener(e -> chooseFiles());
         left.add(attachBtn);
+        left.add(chipsBar);
         left.add(attachedLabel);
         attachedLabel.setForeground(Ui.TEXT_SECONDARY);
         attachedLabel.setFont(Ui.FONT_SMALL);
@@ -100,9 +94,11 @@ public class ChatView extends JPanel {
         right.setOpaque(false);
         JButton sendBtn = new JButton("Отправить");
         Ui.stylePrimary(sendBtn);
-        sendBtn.setIcon(Ui.iconImage("➤", 16));
-        sendBtn.setHorizontalTextPosition(SwingConstants.LEFT);
-        sendBtn.setIconTextGap(6);
+        sendBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
+        sendBtn.setForeground(Color.BLACK);
+        sendBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        sendBtn.setPreferredSize(new Dimension(148, 44));
+        sendBtn.setMinimumSize(new Dimension(148, 44));
         sendBtn.addActionListener(e -> sendMessage());
         right.add(sendBtn);
 
@@ -125,7 +121,6 @@ public class ChatView extends JPanel {
 
         JPanel north = new JPanel(new BorderLayout());
         north.setOpaque(false);
-        north.add(options, BorderLayout.NORTH);
         north.add(center, BorderLayout.CENTER);
 
         panel.add(north, BorderLayout.CENTER);
@@ -351,14 +346,17 @@ public class ChatView extends JPanel {
         // Контексты из выбранных chips (БД/навыки/инструменты)
         String dbPath = null;
         String dbName = null;
-        if (chipsBar.hasDatabases()) {
-            List<String> dbs = new ArrayList<String>(chipsBar.getSelectedDatabases());
-            dbContext = frame.getAgent().buildDbContext(dbs);
-            // Для авто-обновления БД используем первую выбранную БД
-            dbName = dbs.get(0);
-            Map<String, Object> dbInfo = frame.getStore().getDatabase(dbName);
-            if (dbInfo != null) {
-                dbPath = Json.str(dbInfo, "path");
+                if (chipsBar.hasDatabases()) {
+            List<String> dbs = new ArrayList<String>(chipsBar.getSelectedSqliteDatabases());
+            if (!dbs.isEmpty()) {
+                // Сообщение используется для выборочной подгрузки примеров по релевантным таблицам.
+                dbContext = frame.getAgent().buildDbContext(dbs, message);
+                // Для авто-обновления БД используем первую выбранную БД
+                dbName = dbs.get(0);
+                Map<String, Object> dbInfo = frame.getStore().getDatabase(dbName);
+                if (dbInfo != null) {
+                    dbPath = Json.str(dbInfo, "path");
+                }
             }
         }
         String skillsContext = null;
