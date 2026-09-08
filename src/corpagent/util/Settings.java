@@ -21,6 +21,7 @@ public class Settings {
             this.data.put("auto_update_db", false); // выключено по умолчанию (безопаснее)
             this.data.put("theme", "green");
             this.data.put("show_usage_in_chat", true);
+            this.data.put("confirm_db_write", true); // безопасность: подтверждать запись в БД
         } else {
             this.data = Json.parseObject(content);
         }
@@ -49,8 +50,30 @@ public class Settings {
         return Json.bool(data, "show_usage_in_chat", true);
     }
 
-    public void setShowUsageInChat(boolean value) {
+        public void setShowUsageInChat(boolean value) {
         data.put("show_usage_in_chat", value);
+    }
+
+    /** Суточный лимит токенов LLM (0 = без лимита). Хранится в settings.json. */
+    public long getDailyLimitTokens() {
+        Object v = data.get("daily_limit_tokens");
+        if (v instanceof Number) {
+            return ((Number) v).longValue();
+        }
+        return 0;
+    }
+
+    public void setDailyLimitTokens(long value) {
+        data.put("daily_limit_tokens", Math.max(0, value));
+    }
+
+    /** Требовать ли ручного подтверждения записи в БД (db_execute). Безопасность. */
+    public boolean isConfirmDbWrite() {
+        return Json.bool(data, "confirm_db_write", true);
+    }
+
+    public void setConfirmDbWrite(boolean value) {
+        data.put("confirm_db_write", value);
     }
 
     public Map<String, Object> getRaw() {
@@ -61,4 +84,6 @@ public class Settings {
     public void save() {
         Utils.writeFile(settingsPath, Json.stringify(data, true));
     }
+
 }
+

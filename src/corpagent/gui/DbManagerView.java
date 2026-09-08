@@ -1,6 +1,7 @@
 package corpagent.gui;
 
 import corpagent.db.DatabaseManager;
+import corpagent.files.FileExtractor;
 import corpagent.util.Json;
 import corpagent.util.Utils;
 
@@ -8,6 +9,7 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -16,11 +18,13 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,8 +38,10 @@ public class DbManagerView extends JPanel {
     private final MainFrame frame;
     private final JTextField nameField = new JTextField(20);
     private final JTextArea descArea = new JTextArea(3, 40);
-    private final JTextArea schemaArea = new JTextArea(14, 60);
+        private final JTextArea schemaArea = new JTextArea(14, 60);
     private final JLabel statusLabel = new JLabel(" ");
+    private final List<File> selectedFiles = new ArrayList<File>();
+    private final JLabel filesStatusLabel = new JLabel("Файлы не выбраны.");
 
     public DbManagerView(MainFrame frame) {
         this.frame = frame;
@@ -105,8 +111,12 @@ public class DbManagerView extends JPanel {
         back.setIcon(Ui.iconImage("←", 16));
         Ui.styleButton(back, false);
         back.addActionListener(e -> frame.showChat());
-        buttons.add(back);
+                buttons.add(back);
         content.add(buttons);
+
+        content.add(Box.createVerticalStrut(18));
+        content.add(buildFilePanel());
+        content.add(Box.createVerticalStrut(6));
 
         statusLabel.setFont(Ui.FONT_SMALL);
         statusLabel.setForeground(Ui.PRIMARY);
@@ -216,6 +226,153 @@ public class DbManagerView extends JPanel {
                         statusLabel.setText("❌ Ошибка: " + r.error);
                         JOptionPane.showMessageDialog(DbManagerView.this,
                                 "Не удалось создать БД:\n" + r.error);
+                    }
+                } catch (Exception ex) {
+                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setText("❌ Ошибка: " + ex.getMessage());
+                }
+            }
+        }.execute();
+    }
+
+        private JPanel buildFilePanel() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(new Color(245, 250, 245));
+        p.setBorder(BorderFactory.createLineBorder(new Color(167, 214, 195)));
+
+        p.add(fieldLabel("Способ 2: создать БД из загруженных файлов"));
+        p.add(Box.createVerticalStrut(6));
+        JLabel h = new JLabel("<html>Выберите один или несколько файлов "
+                + "(txt/md/csv/html/docx/pdf/xlsx/pptx).<br>ИИ изучит их содержимое и построит структуру БД. "
+                + "Имя и описание БД возьмите из полей выше.</html>");
+        h.setFont(Ui.FONT_SMALL);
+        h.setForeground(Ui.TEXT_GRAY);
+        p.add(h);
+        p.add(Box.createVerticalStrut(8));
+
+        filesStatusLabel.setForeground(new Color(59, 130, 246));
+        filesStatusLabel.setFont(Ui.FONT_SMALL);
+        updateFilesLabelText();
+        p.add(filesStatusLabel);
+        p.add(Box.createVerticalStrut(8));
+
+        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        row.setOpaque(false);
+        JButton choose = new JButton("Выбрать файлы");
+        choose.setIcon(Ui.iconImage("📁", 16));
+        choose.setBackground(new Color(59, 130, 246));
+        choose.setForeground(Color.WHITE);
+        choose.setFocusPainted(false);
+        choose.setFont(Ui.FONT_PLAIN);
+        choose.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        choose.addActionListener(e -> chooseSourceFiles());
+        row.add(choose);
+
+        JButton create = new JButton("Создать БД из файлов");
+        create.setIcon(Ui.iconImage("🗄️", 16));
+        Ui.styleButton(create, true);
+        create.addActionListener(e -> createFromFiles());
+        row.add(create);
+        p.add(row);
+        return p;
+    }
+
+    private void updateFilesLabelText() {
+        if (selectedFiles.isEmpty()) {
+            filesStatusLabel.setText("Файлы не выбраны.");
+        } else {
+            StringBuilder sb = new StringBuilder("Выбрано файлов: ").append(selectedFiles.size()).append(":");
+            for (File f : selectedFiles) {
+                sb.append(" ").append(f.getName());
+                if (sb.length() > 90) {
+                    sb.append(" …");
+                    break;
+                }
+            }
+            filesStatusLabel.setText(sb.toString());
+        }
+    }
+
+    private void chooseSourceFiles() {
+        JFileChooser chooser = new JFileChooser();
+        Ui.styleFileChooser(chooser);
+        chooser.setMultiSelectionEnabled(true);
+        chooser.setDialogTitle("Выберите файлы для создания БД");
+        // Filter supported formats (extract text only).
+        String[] exts = {"txt", "md", "csv", "html", "docx", "pdf", "xlsx", "pptx"};
+        chooser.setFileFilter(new FileNameExtensionFilter("Поддерживаемые ИИ форматы", exts));
+        int result = chooser.showOpenDialog(this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            for (File f : chooser.getSelectedFiles()) {
+                if (!selectedFiles.contains(f)) {
+                    selectedFiles.add(f);
+                }
+            }
+            updateFilesLabelText();
+        }
+    }
+
+    private void createFromFiles() {
+        String name = nameField.getText().trim();
+        String description = descArea.getText().trim();
+        if (!Utils.isValidDbName(name)) {
+            JOptionPane.showMessageDialog(this,
+                    "Некорректное имя БД. Используйте латиницу, цифры, '_' или '-'.");
+            return;
+        }
+        if (selectedFiles.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Сначала выберите файлы (кнопка «Выбрать файлы»).");
+            return;
+        }
+        if (frame.getStore().getDatabase(name) != null) {
+            int c = JOptionPane.showConfirmDialog(this,
+                    "БД '" + name + "' уже существует. Перезаписать?", "Подтверждение",
+                    JOptionPane.YES_NO_OPTION);
+            if (c != JOptionPane.YES_OPTION) {
+                return;
+            }
+        }
+        statusLabel.setForeground(new Color(16, 185, 129));
+        statusLabel.setText("⏳ Извлечение и анализ файлов...");
+        final String fName = name;
+        final String fDesc = description;
+        final java.util.List<File> files = new ArrayList<File>(selectedFiles);
+        new SwingWorker<DatabaseManager.CreateDbResult, Void>() {
+            @Override
+            protected DatabaseManager.CreateDbResult doInBackground() {
+                // Читаем файлы в фоне (без блокировки UI).
+                StringBuilder combined = new StringBuilder();
+                for (File f : files) {
+                    String text = FileExtractor.extractText(f);
+                    combined.append("Файл: ").append(f.getName()).append("\n").append(text).append("\n\n");
+                }
+                return frame.getAgent().createDatabaseFromFiles(fName, fDesc, combined.toString());
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    DatabaseManager.CreateDbResult r = get();
+                    if (r.success) {
+                        statusLabel.setForeground(new Color(16, 185, 129));
+                        statusLabel.setText("✅ БД создана из файлов: таблиц " + r.tables.size()
+                                + ", записей " + r.totalRecords + ".");
+                        nameField.setText("");
+                        descArea.setText("");
+                        schemaArea.setText("");
+                        selectedFiles.clear();
+                        updateFilesLabelText();
+                        frame.refreshSidebar();
+                        JOptionPane.showMessageDialog(DbManagerView.this,
+                                "База данных '" + fName + "' создана из файлов!\nТаблиц: " + r.tables.size()
+                                        + "\nЗаписей: " + r.totalRecords);
+                        frame.showDbViewer(fName);
+                    } else {
+                        statusLabel.setForeground(Color.RED);
+                        statusLabel.setText("❌ Ошибка: " + r.error);
+                        JOptionPane.showMessageDialog(DbManagerView.this,
+                                "Не удалось создать БД из файлов:\n" + r.error);
                     }
                 } catch (Exception ex) {
                     statusLabel.setForeground(Color.RED);

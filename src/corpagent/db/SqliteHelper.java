@@ -50,9 +50,12 @@ public class SqliteHelper {
      */
     public static QueryResult executeQuery(String dbPath, String query) {
         QueryResult result = new QueryResult();
-        Connection conn = null;
+                Connection conn = null;
         try {
             conn = open(dbPath);
+            // sqlite-jdbc: ручной commit() при auto-commit=ON бросает
+            // «database in auto-commit mode». Отключаем авто-коммит для этого соединения.
+            conn.setAutoCommit(false);
             Statement st = conn.createStatement();
             boolean hasResultSet = st.execute(query);
             if (hasResultSet) {

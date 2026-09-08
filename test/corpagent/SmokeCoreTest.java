@@ -3,6 +3,7 @@ package corpagent;
 import corpagent.db.DatabaseManager;
 import corpagent.db.SqliteHelper;
 import corpagent.tools.ToolExecutor;
+import corpagent.util.IntentRouter;
 
 import java.lang.reflect.Method;
 import java.util.List;
@@ -31,6 +32,7 @@ public class SmokeCoreTest {
         testSplitSqlKeepsStringLiterals();
         testSplitSqlMultipleStatements();
         testA2DbGuards();
+        testIntentRouter();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -129,6 +131,29 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "исключение при тестах A2-охранников: " + e);
         }
+    }
+
+    // 6) Роутер интентов (C1.1): классификация простых запросов без обращения к LLM/БД.
+    private static void testIntentRouter() {
+        check(IntentRouter.detect(null) == IntentRouter.Intent.CHAT,
+                "null → CHAT");
+        check(IntentRouter.detect("создай презентацию по проекту") == IntentRouter.Intent.PRESENTATION,
+                "'презентаци' → PRESENTATION");
+        check(IntentRouter.detect("сделай pptx отчёт") == IntentRouter.Intent.PRESENTATION,
+                "'pptx' → PRESENTATION");
+        check(IntentRouter.detect("создай excel таблицу с зарплатой") == IntentRouter.Intent.EXCEL,
+                "'excel' → EXCEL");
+        check(IntentRouter.detect("собери таблицу доходов") == IntentRouter.Intent.EXCEL,
+                "'таблиц' → EXCEL");
+        check(IntentRouter.detect("создай базу данных projects") == IntentRouter.Intent.DATABASE,
+                "'создай базу данных …' → DATABASE");
+        // Ограничение текущей эвристики (как и в первоначальном коде): сокращение «БД»
+        // само по себе не распознаётся как create-db — осознанно сохраняем прежнее поведение,
+        // пока роутер не будет расширен более точными правилами.
+        check(IntentRouter.detect("создать БД по файлу") != IntentRouter.Intent.DATABASE,
+                "'создать БД по файлу' не ошибочно определяется как создание новой БД");
+        check(IntentRouter.detect("что нового в списке задач?") == IntentRouter.Intent.CHAT,
+                "свободный вопрос → CHAT");
     }
 
 }

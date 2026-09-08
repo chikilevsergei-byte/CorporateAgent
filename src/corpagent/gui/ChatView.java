@@ -65,6 +65,39 @@ public class ChatView extends JPanel {
         add(scroll, BorderLayout.CENTER);
 
         add(buildInputPanel(), BorderLayout.SOUTH);
+        installDbWriteConfirmation();
+    }
+
+    /**
+     * Устанавливает обработчик подтверждения записи в БД для {@code db_execute}.
+     * Показывается модальный диалог «Применить/Отклонить» перед изменением данных.
+     * Логика выполняется из фонового потока ({@link SwingWorker}), поэтому диалог
+     * открывается на EDT через {@code invokeAndWait}, блокируя лишь фоновый поток.
+     */
+    private void installDbWriteConfirmation() {
+        frame.getAgent().setDbWriteConfirmation((sql, activeDb) -> {
+            // Считываем настройку на момент запроса: если подтверждение отключено — не блокируем.
+            if (frame.getSettings() == null || !frame.getSettings().isConfirmDbWrite()) {
+                return true;
+            }
+            final boolean[] allowed = {false};
+            try {
+                javax.swing.SwingUtilities.invokeAndWait(() -> {
+                    int r = javax.swing.JOptionPane.showConfirmDialog(
+                            frame,
+                            "⚠️ База данных записывает изменение в «" + activeDb + "».\n\n"
+                                    + sql + "\n\nВыполнить?",
+                            "Подтверждение изменения БД",
+                            javax.swing.JOptionPane.YES_NO_OPTION,
+                            javax.swing.JOptionPane.WARNING_MESSAGE);
+                    allowed[0] = (r == javax.swing.JOptionPane.YES_OPTION);
+                });
+            } catch (Exception e) {
+                // Не удалось показать диалог (окно закрывается и т.п.) — блокируем запись.
+                allowed[0] = false;
+            }
+            return allowed[0];
+        });
     }
 
     private JPanel buildInputPanel() {
@@ -511,6 +544,9 @@ public class ChatView extends JPanel {
                     JScrollPane sp = (JScrollPane) messagesPanel.getParent().getParent();
                     sp.getVerticalScrollBar().setValue(sp.getVerticalScrollBar().getMaximum());
                 });
+                                // БД могла быть только что создана из прикреплённых файлов —
+                // обновляем список доступных БД в чипах/сайдбаре.
+                chipsBar.refresh();
                 frame.refreshSidebar();
             }
         }.execute();

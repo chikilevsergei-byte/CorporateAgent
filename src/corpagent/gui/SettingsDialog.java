@@ -2,6 +2,7 @@ package corpagent.gui;
 
 import corpagent.util.Config;
 import corpagent.util.Settings;
+import corpagent.util.TokenBudget;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -63,10 +64,13 @@ public class SettingsDialog extends JDialog {
     private final JLabel temperatureValue = new JLabel("0.7");
     private final JTextField maxTokensField = new JTextField("4000", 8);
 
-    // Вкладка «Интерфейс»
+        // Вкладка «Интерфейс»
     private final JCheckBox autoUpdateCheck = new JCheckBox("🔄 Автообновление БД");
     private final JCheckBox showUsageCheck = new JCheckBox("Показывать использование навыков/инструментов/БД в чате");
+    private final JCheckBox confirmDbWriteCheck = new JCheckBox("⚠️ Подтверждать запись изменений в БД (спрашивать перед db_execute)");
     private final JComboBox<String> themeCombo = new JComboBox<String>(new String[]{"green", "dark", "blue"});
+    private final JTextField dailyLimitField = new JTextField("0", 12);
+    private final JLabel spendLabel = new JLabel(" ");
 
     // Панели вкладок и CardLayout
     private final JPanel cardPanel = new JPanel(new CardLayout());
@@ -295,19 +299,52 @@ public class SettingsDialog extends JDialog {
         p.add(autoUpdateCheck);
         p.add(Box.createVerticalStrut(10));
 
-        showUsageCheck.setFont(Ui.FONT_PLAIN);
+                showUsageCheck.setFont(Ui.FONT_PLAIN);
         showUsageCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(showUsageCheck);
+        p.add(Box.createVerticalStrut(10));
+
+        confirmDbWriteCheck.setFont(Ui.FONT_PLAIN);
+        confirmDbWriteCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(confirmDbWriteCheck);
         p.add(Box.createVerticalStrut(16));
 
         p.add(fieldLabel("Тема оформления"));
         p.add(Box.createVerticalStrut(6));
-        themeCombo.setMaximumSize(new Dimension(200, 34));
+                themeCombo.setMaximumSize(new Dimension(200, 34));
         themeCombo.setFont(Ui.FONT_PLAIN);
         p.add(themeCombo);
+        p.add(Box.createVerticalStrut(20));
+
+        p.add(fieldLabel("Дневной лимит токенов (0 — без лимита)"));
+        p.add(Box.createVerticalStrut(6));
+        dailyLimitField.setMaximumSize(new Dimension(220, 32));
+        Ui.styleField(dailyLimitField);
+        dailyLimitField.setToolTipText("0 = без лимита. После исчерпания лимита агент остановит обращения к LLM.");
+        p.add(dailyLimitField);
+        p.add(Box.createVerticalStrut(8));
+        spendLabel.setFont(Ui.FONT_SMALL);
+        spendLabel.setForeground(Ui.TEXT_GRAY);
+        spendLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        p.add(spendLabel);
 
         p.add(Box.createVerticalGlue());
         return p;
+    }
+
+    /** Обновляет строку текущего расхода токенов за день. */
+    private void updateSpendLabel() {
+        long today = TokenBudget.tokensToday();
+        long limit = settings.getDailyLimitTokens();
+        StringBuilder sb = new StringBuilder("Сегодня потрачено: ")
+                .append(TokenBudget.formatTokens(today))
+                .append(" (≈ ").append(TokenBudget.formatMoney(TokenBudget.costTodayUsd())).append(")");
+        if (limit > 0) {
+            long rem = Math.max(0, limit - today);
+            sb.append(" · лимит ").append(TokenBudget.formatTokens(limit))
+              .append(" · осталось ").append(TokenBudget.formatTokens(rem));
+        }
+                spendLabel.setText(sb.toString());
     }
 
     // ==================== КНОПКИ ====================
@@ -340,10 +377,13 @@ public class SettingsDialog extends JDialog {
         temperatureValue.setText(String.format("%.1f", config.getTemperature()));
         maxTokensField.setText(String.valueOf(config.getMaxTokens()));
 
-        // Интерфейс
-        autoUpdateCheck.setSelected(settings.isAutoUpdateDb());
+                // Интерфейс
+                autoUpdateCheck.setSelected(settings.isAutoUpdateDb());
         showUsageCheck.setSelected(settings.isShowUsageInChat());
+        confirmDbWriteCheck.setSelected(settings.isConfirmDbWrite());
         themeCombo.setSelectedItem(settings.getTheme());
+        dailyLimitField.setText(String.valueOf(settings.getDailyLimitTokens()));
+        updateSpendLabel();
     }
 
     private void saveAndClose() {
@@ -361,9 +401,20 @@ public class SettingsDialog extends JDialog {
         config.save();
 
         // Интерфейс → settings.json
-        settings.setAutoUpdateDb(autoUpdateCheck.isSelected());
+                settings.setAutoUpdateDb(autoUpdateCheck.isSelected());
         settings.setShowUsageInChat(showUsageCheck.isSelected());
+        settings.setConfirmDbWrite(confirmDbWriteCheck.isSelected());
         settings.setTheme((String) themeCombo.getSelectedItem());
+        // Дневной лимит токенов: числовой ввод, 0 = без лимита.
+        try {
+            long limit = Long.parseLong(dailyLimitField.getText().trim());
+            settings.setDailyLimitTokens(limit);
+            TokenBudget.setDailyLimit(limit);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this, "Дневной лимит токенов должен быть целым числом.",
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
         settings.save();
 
         // Обновить состояние фрейма (автообновление БД читается из settings)

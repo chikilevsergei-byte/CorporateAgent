@@ -2,6 +2,7 @@ package corpagent.llm;
 
 import corpagent.util.Config;
 import corpagent.util.Json;
+import corpagent.util.TokenBudget;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
@@ -70,16 +71,31 @@ public class DeepSeekClient {
         data.put("temperature", config.getTemperature());
         data.put("max_tokens", config.getMaxTokens());
 
-        Map<String, Object> respJson = postRequest(data);
+                Map<String, Object> respJson = postRequest(data);
         if (respJson == null) {
             return "❌ Ошибка API: пустой ответ.";
         }
+        recordUsage(respJson);
         Map<String, Object> message = firstMessage(respJson);
         if (message == null) {
             return "❌ Ошибка API: Неверная структура ответа. " + Json.stringify(respJson);
         }
         Object content = message.get("content");
         return content == null ? "" : String.valueOf(content);
+    }
+
+    /** Учитывает расход токенов ответа API в общем учёте. */
+    private static void recordUsage(Map<String, Object> respJson) {
+        if (respJson == null) {
+            return;
+        }
+        Map<String, Object> usage = Json.asMap(respJson.get("usage"));
+        if (usage == null) {
+            return;
+        }
+        long prompt = Json.intVal(usage, "prompt_tokens", 0);
+        long completion = Json.intVal(usage, "completion_tokens", 0);
+        TokenBudget.record(prompt, completion);
     }
 
     /**
@@ -108,10 +124,11 @@ public class DeepSeekClient {
                 data.put("tools", tools);
             }
 
-            Map<String, Object> respJson = postRequest(data);
+                        Map<String, Object> respJson = postRequest(data);
             if (respJson == null) {
                 return "❌ Ошибка API: пустой ответ.";
             }
+            recordUsage(respJson);
             Map<String, Object> message = firstMessage(respJson);
             if (message == null) {
                 return "❌ Ошибка API: Неверная структура ответа. " + Json.stringify(respJson);

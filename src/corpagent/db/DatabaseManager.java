@@ -87,7 +87,8 @@ public class DatabaseManager {
 
         Connection conn = null;
         try {
-            conn = SqliteHelper.open(dbPath);
+                        conn = SqliteHelper.open(dbPath);
+            conn.setAutoCommit(false);
             Statement st = conn.createStatement();
             st.execute("PRAGMA foreign_keys = OFF");
 
@@ -203,7 +204,8 @@ public class DatabaseManager {
     public Object[] importCsvToTable(String dbPath, String tableName, String csvContent, String mode) {
         Connection conn = null;
         try {
-            conn = SqliteHelper.open(dbPath);
+                        conn = SqliteHelper.open(dbPath);
+            conn.setAutoCommit(false);
             Statement st = conn.createStatement();
             BufferedReader reader = new BufferedReader(new StringReader(csvContent));
             String line;

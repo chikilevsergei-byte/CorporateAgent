@@ -29,8 +29,28 @@ import java.util.Map;
  */
 public class ToolExecutor {
 
+    /**
+     * Колбэк подтверждения записи в БД (безопасность).
+     * Вызывается перед фактическим {@code db_execute}, когда требуется согласие
+     * пользователя. Реализацию предоставляет слой GUI, чтобы {@link ToolExecutor}
+     * оставался независимым от Swing и вызывающим кодом был только {@code Agent}.
+     */
+    public interface WriteConfirmation {
+        /**
+         * Запрашивает разрешение на выполнение записывающего оператора.
+         *
+         * @param sql      текст SQL-оператора (для показа пользователю в превью)
+         * @param activeDb активная БД, против которой пойдёт запись
+         * @return true — выполнить запись; false — отклонить
+         */
+        boolean allow(String sql, String activeDb);
+    }
+
     private final DataStore store;
     private final ToolRegistry registry;
+
+    // Необязательный обработчик подтверждения записи в БД (задаётся слоем GUI).
+    private volatile WriteConfirmation writeConfirmation;
 
     // Активная БД для SQL-инструментов (путь и имя), задаётся извне.
     private String activeDbPath;
@@ -46,10 +66,27 @@ public class ToolExecutor {
         this.registry = registry;
     }
 
-    /** Задаёт активную БД (для SQL-инструментов). */
+        /** Задаёт активную БД (для SQL-инструментов). */
     public void setActiveDatabase(String dbPath, String dbName) {
         this.activeDbPath = dbPath;
         this.activeDbName = dbName;
+    }
+
+    /**
+     * Задаёт обработчик подтверждения записи в БД.
+     * Если задан (не null), {@code db_execute} перед фактическим выполнением
+     * запросит через него разрешение. Если колбэк вернёт {@code false}, запись
+     * не выполняется и модели возвращается сообщение об отклонении.
+     *
+     * @param writeConfirmation колбэк подтверждения (может быть null)
+     */
+    public void setWriteConfirmation(WriteConfirmation writeConfirmation) {
+        this.writeConfirmation = writeConfirmation;
+    }
+
+    /** Возвращает активный обработчик подтверждения записи (может быть null). */
+    public WriteConfirmation getWriteConfirmation() {
+        return writeConfirmation;
     }
 
         /** Возвращает имя активной БД. */
@@ -270,10 +307,27 @@ public class ToolExecutor {
             }
             return formatResult(qr);
         }
-        if ("db_execute".equals(functionName)) {
+                if ("db_execute".equals(functionName)) {
             String guardMsg = guardWrite(upper);
             if (guardMsg != null) {
                 return "Ошибка: " + guardMsg;
+            }
+            // Безопасность: при наличии обработчика подтверждения — спрашиваем пользователя,
+            // прежде чем фактически изменить данные в БД. Отказ => запись не выполняется.
+            WriteConfirmation confirm = writeConfirmation;
+            if (confirm != null) {
+                String activeDb = activeDbName == null || activeDbName.trim().isEmpty()
+                        ? activeDbPath : activeDbName;
+                boolean allowed;
+                try {
+                    allowed = confirm.allow(sql, activeDb);
+                } catch (RuntimeException e) {
+                    allowed = false;
+                }
+                if (!allowed) {
+                    return "⛔ Запись отклонена пользователем: " + truncateForMsg(sql)
+                            + " — не выполнено.";
+                }
             }
             SqliteHelper.QueryResult qr = SqliteHelper.executeQuery(activeDbPath, sql);
             if (!qr.success) {
@@ -339,8 +393,17 @@ public class ToolExecutor {
         return false;
     }
 
-    private static boolean startsAt(String s, int idx, String token) {
+        private static boolean startsAt(String s, int idx, String token) {
         return s.regionMatches(idx, token, 0, token.length());
+    }
+
+    /** Обрезает SQL для краткого сообщения отмены/превью. */
+    private static String truncateForMsg(String sql) {
+        if (sql == null) {
+            return "";
+        }
+        String t = sql.trim().replace('\n', ' ');
+        return t.length() > 200 ? t.substring(0, 200) + "…" : t;
     }
 
     /** Форматирует результат запроса в компактный текст для модели. */

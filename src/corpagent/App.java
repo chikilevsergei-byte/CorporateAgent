@@ -6,6 +6,7 @@ import corpagent.files.FileCreator;
 import corpagent.gui.MainFrame;
 import corpagent.util.Config;
 import corpagent.util.Settings;
+import corpagent.util.TokenBudget;
 import corpagent.util.Utils;
 
 import javax.swing.SwingUtilities;
@@ -25,8 +26,10 @@ public class App {
         Utils.mkdirs(baseDir + java.io.File.separator + "output");
 
         try {
-            Config config = new Config(baseDir + java.io.File.separator + "config.json");
+                        Config config = new Config(baseDir + java.io.File.separator + "config.json");
             Settings settings = new Settings(baseDir);
+            // Авторизуем суточный лимит токенов в глобальном учёте.
+            TokenBudget.setDailyLimit(settings.getDailyLimitTokens());
             DataStore store = new DataStore(baseDir);
             DatabaseManager dbManager = new DatabaseManager(
                     baseDir + java.io.File.separator + "databases",

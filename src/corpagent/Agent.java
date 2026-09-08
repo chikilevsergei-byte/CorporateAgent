@@ -8,7 +8,9 @@ import corpagent.llm.DeepSeekClient;
 import corpagent.tools.ToolExecutor;
 import corpagent.tools.ToolRegistry;
 import corpagent.util.Config;
+import corpagent.util.IntentRouter;
 import corpagent.util.Json;
+import corpagent.util.TokenBudget;
 import corpagent.util.Utils;
 
 import java.util.ArrayList;
@@ -41,8 +43,17 @@ public class Agent {
         this.toolExecutor = new ToolExecutor(store, toolRegistry);
     }
 
-    public DeepSeekClient getLlm() {
+        public DeepSeekClient getLlm() {
         return llm;
+    }
+
+    /**
+     * Задаёт обработчик подтверждения записи в БД для встроенной функции
+     * {@code db_execute}. Делегируется исполнителю инструментов. Если задан —
+     * любая запись в БД будет требовать явного согласия пользователя (безопасность).
+     */
+    public void setDbWriteConfirmation(ToolExecutor.WriteConfirmation confirmation) {
+        toolExecutor.setWriteConfirmation(confirmation);
     }
 
     /** Возвращает имя используемой модели. */
@@ -161,21 +172,22 @@ public class Agent {
             fullMessage = message + "\n\n[Содержимое загруженного файла]:\n" + fileContent;
         }
 
-        String messageLower = fullMessage.toLowerCase();
-        String detectedType = "chat";
-        if (messageLower.contains("презентаци") || messageLower.contains("pptx")) {
-            detectedType = "presentation";
-        } else if (messageLower.contains("excel") || messageLower.contains("таблиц")) {
-            detectedType = "excel";
-        } else if ((messageLower.contains("создай") || messageLower.contains("создать"))
-                && messageLower.contains("баз") && messageLower.contains("данны")) {
-            detectedType = "database";
-        } else {
-            detectedType = "chat";
-        }
+                // Классификация интента вынесена в IntentRouter (C1.1): поведение прежнее,
+                // но детекция стала переиспользуемой и удобно-тестируемой.
+                IntentRouter.Intent intent = IntentRouter.detect(fullMessage);
 
         try {
-            if ("presentation".equals(detectedType)) {
+            // Суточный лимит токенов (завершение A1): если расход дня исчерпан,
+            // коротко останавливаем обращения к LLM и сообщаем пользователю.
+            if (TokenBudget.isExhaustedToday()) {
+                result.response = "⛔ Дневной лимит токенов израсходован "
+                        + "(" + TokenBudget.formatTokens(TokenBudget.tokensToday())
+                        + " из лимита " + TokenBudget.formatTokens(TokenBudget.getDailyLimit())
+                        + ").\n\nОткройте «⚙️ Настройки», чтобы повысить или сбросить лимит "
+                        + "(вкладка «Интерфейс»).";
+                return result;
+            }
+            if (intent == IntentRouter.Intent.PRESENTATION) {
                 String prompt = "Создай структуру презентации по запросу: " + fullMessage
                         + "\nФормат:\nЗаголовок слайда 1\nТекст слайда 1\n---SLIDE---\nЗаголовок слайда 2\nТекст слайда 2\n---SLIDE---\nСоздай 5-7 слайдов.";
                 String content = llm.call(singleUser(prompt), systemPrompt);
@@ -191,7 +203,7 @@ public class Agent {
                 result.response = "✅ Презентация создана!\n\n" + Utils.truncate(content, 500);
                 result.filePath = filePath;
                 return result;
-            } else if ("excel".equals(detectedType)) {
+            } else if (intent == IntentRouter.Intent.EXCEL) {
                 String prompt = "Создай данные для Excel по запросу: " + fullMessage
                         + "\nФормат: ячейки через ; строки через перенос.";
                 String data = llm.call(singleUser(prompt), systemPrompt);
@@ -207,7 +219,31 @@ public class Agent {
                 result.response = "✅ Excel создан!\n\n" + Utils.truncate(data, 500);
                 result.filePath = filePath;
                 return result;
-            } else if ("database".equals(detectedType)) {
+                        } else if (intent == IntentRouter.Intent.DATABASE) {
+                // Если к запросу прикреплены файлы — реально создаём БД по их содержимому.
+                                if (fileContent != null && !fileContent.trim().isEmpty()) {
+                    String createdDbName = guessDbNameFromRequest(fullMessage);
+                    if (createdDbName == null) {
+                        createdDbName = "db_" + System.currentTimeMillis();
+                    }
+                    String desc = Utils.truncate(message, 200);
+                    DatabaseManager.CreateDbResult cr =
+                            createDatabaseFromFiles(createdDbName, desc, fileContent);
+                    if (!cr.success) {
+                        result.response = "❌ Не удалось создать БД из файлов: " + cr.error;
+                        return result;
+                    }
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("✅ База данных «").append(createdDbName).append("» создана из загруженных файлов!\n")
+                      .append("Таблиц: ").append(cr.tables.size()).append("\n")
+                      .append("Записей: ").append(cr.totalRecords).append("\n\n")
+                      .append("Путь: ").append(dbManager.dbPath(createdDbName)).append("\n")
+                      .append("Она добавлена в список баз — выберите её в чипах БД над полем ввода.");
+                    result.response = sb.toString();
+                    collectUsage(result, createdDbName, null, null);
+                    return result;
+                }
+                // Без файлов — прежнее поведение: вернуть текстом сгенерированную схему.
                 String prompt = "Создай SQL-схему БД по запросу: " + fullMessage + "\nТолько CREATE TABLE.";
                 String schema = llm.call(singleUser(prompt), systemPrompt);
                 if (schema.startsWith("❌")) {
@@ -240,6 +276,8 @@ public class Agent {
                 historyWithContext = trimHistory(historyWithContext);
 
                                 String response;
+                // Зафиксировали расход до запроса, чтобы показать затраты именно этого ответа.
+                long preTokens = TokenBudget.tokensToday();
                 // Function calling активен при выбранной БД или включённых инструментах.
                 // Активная БД дополнительно подключает управляемые функции db_query/db_execute (A2):
                 // модель читает схему/данные и пишет точечно вместо хрупкого ```sql```-парсинга.
@@ -275,7 +313,18 @@ public class Agent {
                 } else {
                     response = llm.call(historyWithContext, systemPrompt);
                 }
-                result.response = response;
+                                result.response = response;
+
+                // Затраты токенов именно этого ответа (показ в чате + сводный расход).
+                long spent = TokenBudget.tokensToday() - preTokens;
+                if (spent > 0) {
+                    Map<String, Object> u = Json.newObject();
+                    u.put("kind", "token");
+                    u.put("icon", "⚡");
+                    u.put("name", TokenBudget.formatTokens(spent)
+                            + " · всего " + TokenBudget.formatMoney(TokenBudget.costTodayUsd()));
+                    result.usage.add(u);
+                }
 
                 // Визуализация использования: какие БД/навыки/инструменты были задействованы.
                 collectUsage(result, dbName, skillsContext, toolsContext);
@@ -477,8 +526,87 @@ public class Agent {
             if (result.size() >= maxTables) {
                 break;
             }
-            result.add(Json.str(e, "table"));
+                        result.add(Json.str(e, "table"));
         }
         return result;
+    }
+
+    /**
+     * Создаёт БД из содержимого загруженных файлов.
+     * ИИ по объединённому тексту файлов строит SQLite-схему {@code CREATE TABLE}
+     * (+ стартовые {@code INSERT} для табличных данных), после чего создаётся
+     * реальный локальный файл {@code databases/<dbName>.db}.
+     *
+     * @param dbName             целевое имя БД (валидное, латиница/цифры/_-)
+     * @param description        описание/назначение БД (или null)
+     * @param combinedFilesText  объединённое текстовое содержимое загруженных файлов
+     * @return результат создания БД
+     */
+    public DatabaseManager.CreateDbResult createDatabaseFromFiles(String dbName,
+            String description, String combinedFilesText) {
+        DatabaseManager.CreateDbResult failed = new DatabaseManager.CreateDbResult();
+        if (combinedFilesText == null || combinedFilesText.trim().isEmpty()) {
+            failed.success = false;
+            failed.error = "Нет текстового содержимого файлов для построения схемы.";
+            return failed;
+        }
+        String desc = description == null ? "" : description.trim();
+        String prompt = "Создай SQLite-схему базы данных по содержимому загруженных файлов."
+                + (desc.isEmpty() ? "" : " Назначение БД: " + desc)
+                + "\nВерни ТОЛЬКО SQL-операторы. Для каждой сущности добавь CREATE TABLE: "
+                + "поле id INTEGER PRIMARY KEY AUTOINCREMENT; строковые значения — TEXT, "
+                + "числа — INTEGER/REAL, даты/время — TEXT (ISO). "
+                + "НЕ добавляй FOREIGN KEY и REFERENCES. "
+                + "Если в файлах есть табличные данные (CSV или XLSX и т.п.) — после соответствующих "
+                + "CREATE TABLE добавь стартовые INSERT INTO ... (все строки фактических данных)."
+                + "\n\n[Содержимое файлов]:\n" + combinedFilesText;
+        String schema;
+        try {
+            schema = llm.call(singleUser(prompt), "");
+        } catch (Exception e) {
+            failed.success = false;
+            failed.error = "Ошибка генерации схемы ИИ: " + e.getMessage();
+            return failed;
+        }
+        if (schema.startsWith("❌")) {
+            failed.success = false;
+            failed.error = schema;
+            return failed;
+        }
+        // Схема содержит CREATE TABLE + при необходимости INSERT — создаём реальный .db.
+        return dbManager.createDatabase(dbName, schema, description);
+    }
+
+        /**
+     * Пытается извлечь валидное имя БД (латиница/цифры/_-) из текста запроса вида
+     * «создай базу данных имя» / «база данных vendors» / «БД team».
+     * Учитывает необязательное слово «данных» между «база/БД» и именем.
+     * Если не найдено по фразе — возвращает первое валидное латинское слово из запроса.
+     */
+    private static String guessDbNameFromRequest(String request) {
+        if (request == null) {
+            return null;
+        }
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "(?i)(?:баз[а-я]*|бд)"
+                + "(?:\\s*[—–\\-]?\\s*данн[а-яЁё]*)?"
+                + "\\s*[\"“«`]?([a-z][a-z0-9_\\-]{1,39})");
+        java.util.regex.Matcher m = p.matcher(request);
+        while (m.find()) {
+            String n = m.group(1);
+            if (Utils.isValidDbName(n)) {
+                return n;
+            }
+        }
+        // Запасной вариант: первое валидное латинское слово запроса (например, имя в отдельном слове).
+        java.util.regex.Matcher w = java.util.regex.Pattern
+                .compile("[a-zA-Z][a-zA-Z0-9_\\-]{2,39}").matcher(request);
+        while (w.find()) {
+            String t = w.group();
+            if (Utils.isValidDbName(t)) {
+                return t;
+            }
+        }
+        return null;
     }
 }

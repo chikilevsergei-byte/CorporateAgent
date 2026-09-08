@@ -48,16 +48,16 @@ public class SettingsPanelDatabases extends JPanel {
         content.setBackground(Color.WHITE);
         content.setBorder(new EmptyBorder(16, 16, 16, 16));
 
-        JPanel topRow = new JPanel(new BorderLayout());
+                JPanel topRow = new JPanel(new BorderLayout());
         topRow.setOpaque(false);
         JLabel title = new JLabel("🗄️ Базы данных");
         title.setFont(Ui.FONT_TITLE);
         title.setForeground(Ui.TEXT_DARK);
         topRow.add(title, BorderLayout.WEST);
-        JButton addBtn = new JButton("➕ Добавить БД");
-        Ui.styleButton(addBtn, true);
-        addBtn.addActionListener(e -> addDatabase());
-        topRow.add(addBtn, BorderLayout.EAST);
+        JButton createBtn = new JButton("✨ Создать БД из файлов");
+        Ui.styleButton(createBtn, true);
+        createBtn.addActionListener(e -> openCreateFromFiles());
+        topRow.add(createBtn, BorderLayout.EAST);
         content.add(topRow);
         content.add(Box.createVerticalStrut(4));
 
@@ -66,7 +66,17 @@ public class SettingsPanelDatabases extends JPanel {
         hint.setFont(Ui.FONT_SMALL);
         hint.setForeground(Ui.TEXT_GRAY);
         content.add(hint);
-        content.add(Box.createVerticalStrut(12));
+        content.add(Box.createVerticalStrut(6));
+
+        // Вспомогательная кнопка подключения уже существующего файла .db.
+        JButton connectBtn = new JButton("➕ Добавить (подключить) БД");
+        Ui.styleSecondary(connectBtn);
+        connectBtn.addActionListener(e -> addDatabase());
+        JPanel connectRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        connectRow.setOpaque(false);
+        connectRow.add(connectBtn);
+        content.add(connectRow);
+        content.add(Box.createVerticalStrut(10));
 
         Map<String, Object> dbs = store.getDatabases();
         Map<String, Object> sqliteDbs = new java.util.LinkedHashMap<String, Object>();
@@ -253,8 +263,18 @@ public class SettingsPanelDatabases extends JPanel {
         return port > 0 ? host + ":" + port : host;
     }
 
-    private void addDatabase() {
+        private void addDatabase() {
         DbConnectDialog dlg = new DbConnectDialog(frame, store, null);
+        dlg.setVisible(true);
+        if (dlg.isSaved()) {
+            refresh();
+            frame.refreshSidebar();
+        }
+    }
+
+    /** Открывает окно создания новой БД из загруженных файлов. */
+    private void openCreateFromFiles() {
+        DbCreateFromFilesDialog dlg = new DbCreateFromFilesDialog(frame, store);
         dlg.setVisible(true);
         if (dlg.isSaved()) {
             refresh();
