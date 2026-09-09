@@ -137,9 +137,15 @@ public class ToolExecutor {
         }
         String icon = Json.str(tool, "icon", "🔧");
 
-        String result;
+                String result;
         try {
-            if ("http".equals(type)) {
+            boolean pseudoAgent = endpointStartsWithAgent(tool);
+            if (pseudoAgent) {
+                // Псевдо-endpoint вида "agent:..." у пресет-инструментов означает,
+                // что документ генерирует сам ассистент (Excel/PPT по данным БД),
+                // а не удалённый HTTP-сервис. Сетевой вызов не выполняем.
+                result = handleAgentEndpoint(tool, arguments);
+            } else if ("http".equals(type)) {
                 result = executeHttp(tool, arguments);
             } else if ("python".equals(type)) {
                 result = executeProcess(tool, arguments, true);
@@ -163,6 +169,38 @@ public class ToolExecutor {
             }
         }
         return icon + " Результат инструмента «" + name + "»:\n" + result;
+    }
+
+        /** True, если endpoint инструмента — псевдо-команда вида "agent:...". */
+    private static boolean endpointStartsWithAgent(Map<String, Object> tool) {
+        String ep = Json.str(tool, "endpoint", "");
+        return ep != null && ep.trim().startsWith("agent:");
+    }
+
+    /**
+     * Обработчик псевдо-endpoint "agent:...". Такие инструменты соответствуют
+     * встроенным генераторам документов ассистента (Excel/PPT по данным активной БД),
+     * а не удалённым HTTP-сервисам. Возвращает модели понятные инструкции, чтобы
+     * она создала документ через собственные интенты (Excel/PPT) вместо сетевого вызова.
+     */
+    private static String handleAgentEndpoint(Map<String, Object> tool, Map<String, Object> args) {
+        String name = Json.str(tool, "name");
+        String action = Json.str(tool, "endpoint", "").trim();
+        if (action.startsWith("agent:")) {
+            action = action.substring("agent:".length());
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("Это встроенный генератор документа ассистента (а не HTTP-сервис). ")
+          .append("Чтобы его выполнить, создайте файл напрямую своими средствами генерации Excel/PPT ")
+          .append("по данным активной базы данных. ");
+        if (args != null && !args.isEmpty()) {
+            sb.append("Запрошенные аргументы: ").append(Json.stringify(args)).append(". ");
+        }
+        sb.append("Действие: ").append(action).append(' ');
+        if (name != null && !name.isEmpty()) {
+            sb.append("(").append(name).append(")");
+        }
+        return "agent-action:" + action + " — сформируйте документ через интенты создания Excel/PPT.";
     }
 
     // ==================== HTTP ====================

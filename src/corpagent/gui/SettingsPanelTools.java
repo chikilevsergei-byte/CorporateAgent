@@ -1,6 +1,7 @@
 package corpagent.gui;
 
 import corpagent.data.DataStore;
+import corpagent.data.PresetLoader;
 import corpagent.util.Json;
 import corpagent.util.Utils;
 
@@ -173,6 +174,15 @@ public class SettingsPanelTools extends JPanel {
         stateL.setFont(Ui.FONT_SMALL);
         stateL.setForeground(enabled ? Ui.SUCCESS : Ui.TEXT_MUTED);
 
+        // P1.2: индикатор preset
+        boolean isPreset = tool != null && PresetLoader.isPresetTool(tool);
+        if (isPreset) {
+            JLabel presetL = Ui.icon("📌", 14);
+            presetL.setFont(Ui.FONT_SMALL);
+            presetL.setForeground(Ui.TEXT_MUTED);
+            left.add(presetL);
+        }
+
         row.add(left, BorderLayout.CENTER);
         row.add(stateL, BorderLayout.EAST);
 
@@ -307,6 +317,14 @@ public class SettingsPanelTools extends JPanel {
     private void deleteCurrent() {
         if (editingName == null) {
             JOptionPane.showMessageDialog(this, "Выберите инструмент в списке слева.");
+            return;
+        }
+        Map<String, Object> tool = Json.asMap(store.getTools().get(editingName));
+        // P1.2: защита пресет-инструментов от удаления
+        if (PresetLoader.isPresetTool(tool)) {
+            JOptionPane.showMessageDialog(this,
+                    "Этот инструмент предустановлен и не может быть удалён.",
+                    "Пресет", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         int c = JOptionPane.showConfirmDialog(this, "Удалить инструмент '" + editingName + "'?",

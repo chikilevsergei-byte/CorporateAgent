@@ -344,10 +344,11 @@ public class Agent {
      * Собирает сведения об использовании БД/навыков/инструментов для визуализации в чате.
      * Заполняет {@code result.usage} записями вида {kind, name, icon}.
      */
-    private void collectUsage(TaskResult result, String dbName,
+        private void collectUsage(TaskResult result, String dbName,
                               String skillsContext, String toolsContext) {
-        // БД
-        if (dbName != null && !dbName.isEmpty()) {
+        // БД показывается, только если она реально затронута запросом чтения/записи
+        // (db_query / db_execute), а не просто выбрана в чипах.
+        if (dbName != null && !dbName.isEmpty() && isActiveDbUsed()) {
             Map<String, Object> u = Json.newObject();
             u.put("kind", "db");
             u.put("name", dbName);
@@ -364,6 +365,10 @@ public class Agent {
         }
         // Инструменты: показываем только реально выполненные через function calling.
         for (String name : toolExecutor.getExecutedTools()) {
+            // Системные db-функции уже учитываются строкой об использовании БД выше.
+            if ("db_query".equals(name) || "db_execute".equals(name)) {
+                continue;
+            }
             Map<String, Object> u = Json.newObject();
             u.put("kind", "tool");
             u.put("name", name);
@@ -372,6 +377,16 @@ public class Agent {
         }
         // Если инструменты были выбраны, но ни один не выполнен — не показываем их как применённые.
         // (toolsContext используется только для активации function calling.)
+    }
+
+    /** Признак того, что активная БД действительно участвовала через db_query/db_execute. */
+    private boolean isActiveDbUsed() {
+        for (String name : toolExecutor.getExecutedTools()) {
+            if ("db_query".equals(name) || "db_execute".equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Извлекает имена из контекста вида "- имя: описание" (по строке на элемент). */

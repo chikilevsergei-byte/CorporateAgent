@@ -1,14 +1,25 @@
 package corpagent.gui;
 
 import corpagent.data.DataStore;
+import corpagent.data.PresetLoader;
 import corpagent.util.Json;
 import corpagent.util.Utils;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -54,10 +65,21 @@ public class SettingsPanelDatabases extends JPanel {
         title.setFont(Ui.FONT_TITLE);
         title.setForeground(Ui.TEXT_DARK);
         topRow.add(title, BorderLayout.WEST);
+        JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        topButtons.setOpaque(false);
         JButton createBtn = new JButton("✨ Создать БД из файлов");
         Ui.styleButton(createBtn, true);
         createBtn.addActionListener(e -> openCreateFromFiles());
-        topRow.add(createBtn, BorderLayout.EAST);
+        topButtons.add(createBtn);
+        JButton exportBtn = new JButton("📤 Экспорт БД");
+        Ui.styleSecondary(exportBtn);
+        exportBtn.addActionListener(e -> exportDatabase());
+        topButtons.add(exportBtn);
+        JButton importBtn = new JButton("📥 Импорт БД");
+        Ui.styleSecondary(importBtn);
+        importBtn.addActionListener(e -> importDatabase());
+        topButtons.add(importBtn);
+        topRow.add(topButtons, BorderLayout.EAST);
         content.add(topRow);
         content.add(Box.createVerticalStrut(4));
 
@@ -184,17 +206,36 @@ public class SettingsPanelDatabases extends JPanel {
         });
         right.add(toggle);
 
+        // P1.3: защита пресет-БД от удаления/редактирования
+        boolean isPreset = PresetLoader.isPresetDatabase(db);
+
         JButton edit = new JButton("✏️");
         Ui.styleButton(edit, false);
         edit.setToolTipText("Редактировать");
         edit.addActionListener(e -> editDatabase(name));
+        if (isPreset) {
+            edit.setEnabled(false);
+            edit.setToolTipText("Пресет — только чтение");
+        }
         right.add(edit);
 
         JButton del = new JButton("🗑️");
         Ui.styleButton(del, false);
         del.setToolTipText("Удалить");
         del.addActionListener(e -> deleteDatabase(name));
+        if (isPreset) {
+            del.setEnabled(false);
+            del.setToolTipText("Пресет — нельзя удалить");
+        }
         right.add(del);
+
+        // Индикатор preset
+        if (isPreset) {
+            JLabel presetL = Ui.icon("📌", 14);
+            presetL.setFont(Ui.FONT_SMALL);
+            presetL.setForeground(Ui.TEXT_MUTED);
+            right.add(presetL);
+        }
 
         card.add(right, BorderLayout.EAST);
         return card;
@@ -310,7 +351,153 @@ public class SettingsPanelDatabases extends JPanel {
             frame.refreshSidebar();
         }
 
-    private static String escape(String s) {
-        return s == null ? "" : s.replace("&", "&").replace("<", "<").replace(">", ">");
+        private static String escape(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;").replace("'", "&#39;");
+    }
+
+    // ==================== ЭКСПОРТ/ИМПОРТ БД (R-P1.6) ====================
+
+    /** Экспорт выбранной БД в ZIP-архив (.db + метаданные). */
+    private void exportDatabase() {
+        // Находим первую непресет-БД для экспорта
+        String dbName = null;
+        for (Map.Entry<String, Object> e : store.getDatabases().entrySet()) {
+            Map<String, Object> db = Json.asMap(e.getValue());
+            if (db != null && !PresetLoader.isPresetDatabase(db)) {
+                dbName = e.getKey();
+                break;
+            }
+        }
+        if (dbName == null) {
+            JOptionPane.showMessageDialog(this, "Нет доступных для экспорта БД.");
+            return;
+        }
+        Map<String, Object> db = Json.asMap(store.getDatabases().get(dbName));
+        String dbPath = Json.str(db, "file", Json.str(db, "path"));
+        if (dbPath.isEmpty() || !Utils.exists(dbPath)) {
+            JOptionPane.showMessageDialog(this, "Файл БД не найден: " + dbName);
+            return;
+        }
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Экспорт БД: " + dbName);
+        chooser.setSelectedFile(new File(dbName + ".zip"));
+        int result = chooser.showSaveDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) return;
+        File outFile = chooser.getSelectedFile();
+        try {
+            exportDbToZip(dbPath, db, outFile);
+            JOptionPane.showMessageDialog(this, "БД '" + dbName + "' экспортирована в:\n" + outFile.getAbsolutePath());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Ошибка экспорта:\n" + ex.getMessage(),
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private static void exportDbToZip(String dbPath, Map<String, Object> db, File outFile) throws Exception {
+        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outFile))) {
+            // Добавляем .db-файл
+            File dbFile = new File(dbPath);
+            byte[] buffer = new byte[4096];
+            try (InputStream is = new FileInputStream(dbFile)) {
+                ZipEntry ze = new ZipEntry(dbFile.getName());
+                zos.putNextEntry(ze);
+                int len;
+                while ((len = is.read(buffer)) > 0) {
+                    zos.write(buffer, 0, len);
+                }
+                zos.closeEntry();
+            }
+            // Добавляем метаданные
+            Map<String, Object> meta = Json.newObject();
+            meta.put("name", Json.str(db, "name", ""));
+            meta.put("description", Json.str(db, "description", ""));
+            meta.put("type", Json.str(db, "type", "sqlite"));
+            meta.put("schema", Json.str(db, "schema", ""));
+            meta.put("exported_at", Utils.nowIso());
+            ZipEntry metaEntry = new ZipEntry("metadata.json");
+            zos.putNextEntry(metaEntry);
+            zos.write(Json.stringify(meta).getBytes("UTF-8"));
+            zos.closeEntry();
+        }
+    }
+
+    /** Импорт БД из ZIP-архива. */
+    private void importDatabase() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Импорт БД из ZIP");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("ZIP-архивы", "zip"));
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) return;
+        File zipFile = chooser.getSelectedFile();
+        try {
+            importDbFromZip(zipFile);
+            refresh();
+            frame.refreshSidebar();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Ошибка импорта:\n" + ex.getMessage(),
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void importDbFromZip(File zipFile) throws Exception {
+        String tempDir = Utils.getTempDir() + java.io.File.separator + "corpagent_import_" + System.currentTimeMillis();
+        Utils.mkdirs(tempDir);
+        String[] dbFileName = {null};
+        String[] metadataJson = {null};
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                File outFile = new File(tempDir, entry.getName());
+                if (entry.isDirectory()) {
+                    Utils.mkdirs(outFile.getAbsolutePath());
+                } else {
+                    Utils.mkdirs(outFile.getParent());
+                    try (OutputStream os = new FileOutputStream(outFile)) {
+                        byte[] buffer = new byte[4096];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            os.write(buffer, 0, len);
+                        }
+                    }
+                    if (entry.getName().endsWith(".db")) {
+                        dbFileName[0] = outFile.getAbsolutePath();
+                    } else if ("metadata.json".equals(entry.getName())) {
+                        metadataJson[0] = Utils.readFile(outFile.getAbsolutePath());
+                    }
+                }
+                zis.closeEntry();
+            }
+        }
+        if (dbFileName[0] == null) {
+            throw new Exception("В архиве не найден .db-файл");
+        }
+        // Парсим метаданные
+        Map<String, Object> meta = Json.newObject();
+        if (metadataJson[0] != null && !metadataJson[0].trim().isEmpty()) {
+            Object parsed = Json.parse(metadataJson[0]);
+            meta = Json.asMap(parsed) != null ? Json.asMap(parsed) : Json.newObject();
+        }
+        String dbName = Json.str(meta, "name", zipFile.getName().replace(".zip", ""));
+        String description = Json.str(meta, "description", "");
+        // Копируем .db в databases/
+        String destPath = frame.getDbManager().dbPath(dbName);
+        Utils.copyFile(dbFileName[0], destPath);
+        // Регистрируем в хранилище
+        Map<String, Object> db = Json.newObject();
+        db.put("path", destPath);
+        db.put("file", destPath);
+        db.put("description", description);
+        db.put("type", "sqlite");
+        db.put("enabled", true);
+        db.put("created", Utils.nowIso());
+        db.put("usage_count", 0);
+        store.putDatabase(dbName, db);
+        store.saveAll();
+        Utils.deleteDir(tempDir);
     }
 }

@@ -1,6 +1,7 @@
 package corpagent.gui;
 
 import corpagent.data.DataStore;
+import corpagent.data.PresetLoader;
 import corpagent.util.Json;
 import corpagent.util.Utils;
 
@@ -170,6 +171,15 @@ public class SettingsPanelSkills extends JPanel {
         stateL.setFont(Ui.FONT_SMALL);
         stateL.setForeground(enabled ? Ui.SUCCESS : Ui.TEXT_MUTED);
 
+        // Индикатор preset (P1.1)
+        boolean isPreset = skill != null && PresetLoader.isPresetSkill(skill);
+        if (isPreset) {
+            JLabel presetL = Ui.icon("📌", 14);
+            presetL.setFont(Ui.FONT_SMALL);
+            presetL.setForeground(Ui.TEXT_MUTED);
+            left.add(presetL);
+        }
+
         row.add(left, BorderLayout.CENTER);
         row.add(stateL, BorderLayout.EAST);
 
@@ -293,6 +303,14 @@ public class SettingsPanelSkills extends JPanel {
     private void deleteCurrent() {
         if (editingName == null) {
             JOptionPane.showMessageDialog(this, "Выберите навык в списке слева.");
+            return;
+        }
+        Map<String, Object> skill = Json.asMap(store.getSkills().get(editingName));
+        // P1.1: защита пресет-навыков от удаления
+        if (PresetLoader.isPresetSkill(skill)) {
+            JOptionPane.showMessageDialog(this,
+                    "Этот навык предустановлен и не может быть удалён.",
+                    "Пресет", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         int c = JOptionPane.showConfirmDialog(this, "Удалить навык '" + editingName + "'?",

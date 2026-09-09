@@ -1,0 +1,7 @@
+{
+  "name": "Создание паспорта проекта в Excel",
+  "description": "Генерирует файл Excel с паспортом проекта: problem statement (SBC), цели SMART, команда, вехи. Данные берутся из БД проекта.",
+  "type": "http",
+  "endpoint": "agent:create_passport_excel",
+  "code": "function create_passport_excel(db_name, project_id):\n    # Извлекает данные паспорта из БД\n    project = db.query('SELECT * FROM project WHERE id = ?', [project_id])\n    problems = db.query('SELECT * FROM problem_statement WHERE project_id = ?', [project_id])\n    goals = db.query('SELECT * FROM goal_smart WHERE project_id = ?', [project_id])\n    team = db.query('SELECT * FROM team_member WHERE project_id = ?', [project_id])\n    # Формирует Excel с 4 листами: Project, Problems, Goals, Team\n    return file_creator.createExcelFromDb(db_name, 'passport', {\n        'Project': project,\n        'Problem Statement': problems,\n        'Goals SMART': goals,\n        'Team': team\n    })"
+}

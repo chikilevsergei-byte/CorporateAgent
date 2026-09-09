@@ -479,8 +479,11 @@ public class ChatView extends JPanel {
 
                     addMessageBubble("assistant", result.response);
 
-                    // Визуализация использования БД/навыков/инструментов
-                    if (result.usage != null && !result.usage.isEmpty()) {
+                                        // Визуализация использования БД/навыков/инструментов
+                    // («Показывать использование ... в чате» в настройках → Интерфейс)
+                    boolean showUsage = frame.getSettings() == null
+                            || frame.getSettings().isShowUsageInChat();
+                    if (showUsage && result.usage != null && !result.usage.isEmpty()) {
                         StringBuilder ub = new StringBuilder("<b>⚡ Использовано:</b> ");
                         boolean first = true;
                         for (Map<String, Object> u : result.usage) {

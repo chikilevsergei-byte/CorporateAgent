@@ -144,4 +144,26 @@ public final class Utils {
     public static Map<String, Object> asMap(Object o) {
         return (o instanceof Map) ? (Map<String, Object>) o : null;
     }
+
+    /** Рекурсивно удаляет каталог и все его содержимое. */
+    public static boolean deleteDir(String path) {
+        return deleteDir(new File(path));
+    }
+
+    private static boolean deleteDir(File file) {
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteDir(child);
+                }
+            }
+        }
+        return file.delete();
+    }
+
+    /** Возвращает системную временную директорию. */
+    public static String getTempDir() {
+        return System.getProperty("java.io.tmpdir");
+    }
 }

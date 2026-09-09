@@ -1,5 +1,6 @@
 package corpagent.gui;
 
+import corpagent.data.BackupManager;
 import corpagent.util.Config;
 import corpagent.util.Settings;
 import corpagent.util.TokenBudget;
@@ -11,6 +12,7 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -31,6 +33,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.util.Hashtable;
 
 /**
@@ -58,6 +61,9 @@ public class SettingsDialog extends JDialog {
 
     // Вкладка «Модель»
     private final JPasswordField apiKeyField = new JPasswordField(30);
+    private final JComboBox<String> providerCombo = new JComboBox<String>(new String[]{
+            "DeepSeek", "Яндекс ИИ студия", "Другой (OpenAI-совместимый)"});
+    private final JTextField baseUrlField = new JTextField(30);
     private final JComboBox<String> modelCombo = new JComboBox<String>(new String[]{
             "deepseek-chat", "deepseek-reasoner"});
     private final JSlider temperatureSlider = new JSlider(0, 200, 70);
@@ -222,6 +228,24 @@ public class SettingsDialog extends JDialog {
         p.add(keyRow);
         p.add(Box.createVerticalStrut(14));
 
+        // Провайдер (R-P0.1): DeepSeek / Яндекс ИИ студия / Произвольный (OpenAI-совместимый)
+        p.add(fieldLabel("Провайдер LLM"));
+        p.add(Box.createVerticalStrut(6));
+        providerCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        providerCombo.setFont(Ui.FONT_PLAIN);
+        providerCombo.addActionListener(e -> applyProviderDefaults());
+        p.add(providerCombo);
+        p.add(Box.createVerticalStrut(10));
+
+        // Базовый URL API (адрес endpoint, до /chat/completions)
+        p.add(fieldLabel("Base URL API (до /chat/completions)"));
+        p.add(Box.createVerticalStrut(6));
+        baseUrlField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+        Ui.styleField(baseUrlField);
+        baseUrlField.setToolTipText("Подставляется автоматически при выборе провайдера. Меняйте при необходимости.");
+        p.add(baseUrlField);
+        p.add(Box.createVerticalStrut(14));
+
         // Модель
         p.add(fieldLabel("Модель"));
         p.add(Box.createVerticalStrut(6));
@@ -283,6 +307,61 @@ public class SettingsDialog extends JDialog {
         }
     }
 
+    /**
+     * При смене провайдера подставляет его базовый URL по умолчанию (R-P0.1).
+     * Для «custom» URL очищается — его вводит пользователь. Модели выбираются
+     * через {@link #populateModelsFor(String)}.
+     */
+    private void applyProviderDefaults() {
+        String code = providerCode(providerCombo.getSelectedItem());
+        if (Config.PROVIDER_CUSTOM.equals(code)) {
+            baseUrlField.setText("");
+        } else {
+            baseUrlField.setText(Config.defaultBaseUrl(code));
+        }
+        populateModelsFor(code);
+    }
+
+    /** Преобразует выбранную подпись провайдера в код ({@link Config#PROVIDER_*} константы). */
+    private static String providerCode(Object label) {
+        String s = label == null ? "" : String.valueOf(label);
+        if (s.contains("Яндекс")) {
+            return Config.PROVIDER_YANDEX;
+        }
+        if (s.contains("Другой") || s.contains("Друг")) {
+            return Config.PROVIDER_CUSTOM;
+        }
+        return Config.PROVIDER_DEEPSEEK;
+    }
+
+    /** Код провайдера → подпись, показываемая в комбобоксе. */
+    private static String providerLabel(String code) {
+        if (Config.PROVIDER_YANDEX.equals(code)) {
+            return "Яндекс ИИ студия";
+        }
+        if (Config.PROVIDER_CUSTOM.equals(code)) {
+            return "Другой (OpenAI-совместимый)";
+        }
+        return "DeepSeek";
+    }
+
+    /** Заполняет список моделей согласно выбранному провайдеру. */
+    private void populateModelsFor(String provider) {
+        modelCombo.removeAllItems();
+        if (Config.PROVIDER_YANDEX.equals(provider)) {
+            modelCombo.addItem("yandexgpt-lite");
+            modelCombo.addItem("yandexgpt");
+            modelCombo.addItem("yandexgpt-32k");
+        } else if (Config.PROVIDER_CUSTOM.equals(provider)) {
+            modelCombo.addItem("gpt-4o");
+            modelCombo.addItem("gpt-4o-mini");
+            modelCombo.addItem("custom-model");
+        } else {
+            modelCombo.addItem("deepseek-chat");
+            modelCombo.addItem("deepseek-reasoner");
+        }
+    }
+
     // ==================== ВКЛАДКА «ИНТЕРФЕЙС» ====================
 
     private JPanel buildInterfaceTab() {
@@ -327,6 +406,20 @@ public class SettingsDialog extends JDialog {
         spendLabel.setForeground(Ui.TEXT_GRAY);
         spendLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(spendLabel);
+        p.add(Box.createVerticalStrut(16));
+
+        // P1.7: кнопки бэкапа
+        JPanel backupPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        backupPanel.setOpaque(false);
+        JButton backupBtn = new JButton("💾 Создать бэкап");
+        Ui.stylePrimary(backupBtn);
+        backupBtn.addActionListener(e -> createBackup());
+        backupPanel.add(backupBtn);
+        JButton restoreBtn = new JButton("📂 Восстановить из бэкапа");
+        Ui.styleSecondary(restoreBtn);
+        restoreBtn.addActionListener(e -> restoreBackup());
+        backupPanel.add(restoreBtn);
+        p.add(backupPanel);
 
         p.add(Box.createVerticalGlue());
         return p;
@@ -372,6 +465,17 @@ public class SettingsDialog extends JDialog {
     private void loadValues() {
         // Модель
         apiKeyField.setText(config.getApiKey());
+        // Провайдер/URL (R-P0.1): подставляем сохранённые значения поверх дефолтов.
+        String provider = config.getProvider();
+        String pLabel = providerLabel(provider);
+        if (containsItem(providerCombo, pLabel)) {
+            providerCombo.setSelectedItem(pLabel);
+        }
+        baseUrlField.setText(config.getBaseUrl());
+        populateModelsFor(provider);
+        if (!containsItem(modelCombo, config.getModel())) {
+            modelCombo.addItem(config.getModel());
+        }
         modelCombo.setSelectedItem(config.getModel());
         temperatureSlider.setValue((int) Math.round(config.getTemperature() * 100));
         temperatureValue.setText(String.format("%.1f", config.getTemperature()));
@@ -386,9 +490,24 @@ public class SettingsDialog extends JDialog {
         updateSpendLabel();
     }
 
+    /** Возвращает true, если значение присутствует среди элементов джкобокса. */
+    private static boolean containsItem(JComboBox<String> combo, String value) {
+        if (value == null) {
+            return false;
+        }
+        for (int i = 0; i < combo.getItemCount(); i++) {
+            if (value.equals(combo.getItemAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void saveAndClose() {
         // Модель → config.json
         config.setApiKey(new String(apiKeyField.getPassword()).trim());
+        config.setProvider(providerCode(providerCombo.getSelectedItem()));
+        config.setBaseUrl(baseUrlField.getText());
         config.setModel((String) modelCombo.getSelectedItem());
         config.setTemperature(temperatureSlider.getValue() / 100.0);
         try {
@@ -441,6 +560,54 @@ public class SettingsDialog extends JDialog {
         l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
+    }
+
+    // ==================== БЭКЭП (R-P1.7) ====================
+
+    private void createBackup() {
+        String baseDir = frame.getBaseDir();
+        String backupsDir = baseDir + java.io.File.separator + "backups";
+        try {
+            String backupPath = BackupManager.createBackup(baseDir, backupsDir);
+            JOptionPane.showMessageDialog(this,
+                    "Бэкап создан:\n" + backupPath,
+                    "Бэкап", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Ошибка создания бэкапа:\n" + ex.getMessage(),
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void restoreBackup() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Выберите бэкап для восстановления");
+        chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("ZIP-архивы", "zip"));
+        // Указываем директорию backups/
+        String backupsDir = frame.getBaseDir() + java.io.File.separator + "backups";
+        File backupsDirFile = new File(backupsDir);
+        if (backupsDirFile.exists() && backupsDirFile.isDirectory()) {
+            chooser.setCurrentDirectory(backupsDirFile);
+        }
+        int result = chooser.showOpenDialog(this);
+        if (result != JFileChooser.APPROVE_OPTION) return;
+        File backupFile = chooser.getSelectedFile();
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Восстановить данные из бэкапа '" + backupFile.getName() + "'?\n" +
+                "Текущие данные будут перезаписаны.",
+                "Подтверждение восстановления", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) return;
+        try {
+            BackupManager.restoreBackup(frame.getBaseDir(), backupFile.getAbsolutePath());
+            JOptionPane.showMessageDialog(this,
+                    "Данные восстановлены из бэкапа.\n" +
+                    "Перезапустите приложение для применения изменений.",
+                    "Восстановление", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Ошибка восстановления:\n" + ex.getMessage(),
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // ==================== СКРУГЛЁННАЯ РАМКА С ТЕНЬЮ ====================

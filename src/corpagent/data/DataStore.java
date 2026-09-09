@@ -31,6 +31,11 @@ public class DataStore {
             Migration.backupDataFiles(baseDir);
             saveAll();
         }
+        // Загрузка предустановленных данных (P1.1–P1.3) при первом запуске.
+        boolean presetsApplied = PresetLoader.applyIfEmpty(this);
+        if (presetsApplied) {
+            saveAll();
+        }
     }
 
     private String filePath(String name) {
@@ -127,11 +132,19 @@ public class DataStore {
         return skills;
     }
 
-    public void putSkill(String name, Map<String, Object> skill) {
+        public void putSkill(String name, Map<String, Object> skill) {
+        // P1.x: не даём случайно перезаписать предустановленный навык.
+        if (!allowReplace(skills, name, skill)) {
+            return;
+        }
         skills.put(name, skill);
     }
 
     public void removeSkill(String name) {
+        if (isPresetEntry(skills, name)) {
+            System.err.println("[DataStore] Удаление пресет-навыка запрещено: " + name);
+            return;
+        }
         skills.remove(name);
     }
 
@@ -151,13 +164,27 @@ public class DataStore {
         return tools;
     }
 
-    public void putTool(String name, Map<String, Object> tool) {
+
+
+        public void putTool(String name, Map<String, Object> tool) {
+        // P1.x: защита от случайной перезаписи предустановленных инструментов.
+        if (!allowReplace(tools, name, tool)) {
+            return;
+        }
         tools.put(name, tool);
     }
 
     public void removeTool(String name) {
+        if (isPresetEntry(tools, name)) {
+            System.err.println("[DataStore] Запрещено удаление пресет-инструмента: " + name);
+            return;
+        }
         tools.remove(name);
     }
+
+
+
+
 
     /** Список названий включённых инструментов. */
     public java.util.List<String> enabledTools() {
@@ -180,11 +207,19 @@ public class DataStore {
         return (d instanceof Map) ? (Map<String, Object>) d : null;
     }
 
-    public void putDatabase(String name, Map<String, Object> db) {
+        public void putDatabase(String name, Map<String, Object> db) {
+        // P1.3: защита предустановленных БД от случайной перезаписи.
+        if (!allowReplace(databases, name, db)) {
+            return;
+        }
         databases.put(name, db);
     }
 
     public void removeDatabase(String name) {
+        if (isPresetEntry(databases, name)) {
+            System.err.println("[DataStore] Удаление пресет-БД запрещено: " + name);
+            return;
+        }
         databases.remove(name);
     }
 
@@ -231,7 +266,35 @@ public class DataStore {
         return new ArrayList<Object>();
     }
 
-    public void removeDbLogs(String dbName) {
+        public void removeDbLogs(String dbName) {
         dbLogs.remove(dbName);
+    }
+
+    // ==================== ЗАЩИТА ПРЕСЕТОВ (P1.x) ====================
+
+    /** Проверяет, является ли запись (по имени) предустановленной в заданной карте. */
+    private static boolean isPresetEntry(Map<String, Object> map, String name) {
+        Map<String, Object> entry = Json.asMap(map.get(name));
+        return entry != null && Json.bool(entry, "preset", false);
+    }
+
+    /**
+     * Разрешает ли запись перезапись существующей записи по имени (защита пресетов).
+     * Пресет нельзя заменить записью без флага preset. Все остальные случаи разрешены.
+     */
+    private static boolean allowReplace(Map<String, Object> map, String name, Map<String, Object> incoming) {
+        Map<String, Object> current = Json.asMap(map.get(name));
+        if (current == null) {
+            // Записи ещё нет — можно создавать любой инструмент/навык/БД.
+            return true;
+        }
+        boolean currentIsPreset = Json.bool(current, "preset", false);
+        if (currentIsPreset) {
+            // Пресет нельзя перезаписать пользловательской редакцией без флага preset.
+            boolean incomingIsPreset = Json.bool(incoming, "preset", false);
+            return incomingIsPreset;
+        }
+        // Обычная (непресетная) запись перезаписывается всегда.
+        return true;
     }
 }

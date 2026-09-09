@@ -1,0 +1,10 @@
+{
+  "name": "Методология ИТ проектов",
+  "description": "Предустановленная база данных с методологией управления ИТ-проектами. Содержит фреймворки, этапы, артефакты, роли и шаблоны. Только для чтения, не редактируется.",
+  "path": "databases/it_methodology.db",
+  "schema": "CREATE TABLE frameworks (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    name TEXT NOT NULL,\n    type TEXT,\n    description TEXT,\n    phases TEXT,\n    artifacts TEXT\n);\n\nCREATE TABLE phases (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    framework_id INTEGER,\n    name TEXT NOT NULL,\n    description TEXT,\n    inputs TEXT,\n    outputs TEXT,\n    duration_estimate TEXT\n);\n\nCREATE TABLE roles (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    name TEXT NOT NULL,\n    responsibilities TEXT,\n    skills_required TEXT,\n    level TEXT\n);\n\nCREATE TABLE artifacts (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    name TEXT NOT NULL,\n    phase TEXT,\n    template TEXT,\n    description TEXT,\n    owner_role TEXT\n);",
+  "tables_count": 4,
+  "records_count": 0,
+  "type": "sqlite",
+  "enabled": true
+}

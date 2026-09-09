@@ -58,7 +58,7 @@ public class DatabaseManager {
         public String schema;
     }
 
-    public CreateDbResult createDatabase(String dbName, String rawSchema, String description) {
+            public CreateDbResult createDatabase(String dbName, String rawSchema, String description) {
         CreateDbResult result = new CreateDbResult();
         String dbPath = dbPath(dbName);
         if (Utils.exists(dbPath)) {

@@ -25,13 +25,16 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
 /**
- * Клиент для DeepSeek API (OpenAI-совместимый формат).
+ * OpenAI-совместимый клиент LLM. Формат запроса/ответа — OpenAI-совместимый.
+ * Адрес API берётся из {@link Config#getChatCompletionUrl()}, который задаётся в
+ * настройках (провайдер + base_url) — см. R-P0.1. Так поддерживаются DeepSeek,
+ * Яндекс ИИ студия и другие OpenAI-совместимые endpoints без правки кода.
  * Использует HttpURLConnection из JDK — без внешних зависимостей.
- * Легко адаптируется под Qwen, OpenRouter и другие совместимые API.
+ *
+ * <p>Историческое имя сохранено для совместимости; по роли класс — универсальный ChatClient.</p>
  */
 public class DeepSeekClient {
 
-    private static final String API_URL = "https://api.deepseek.com/chat/completions";
     private static final int MAX_TOOL_ITERATIONS = 5;
 
     private final Config config;
@@ -250,7 +253,7 @@ public class DeepSeekClient {
     private Map<String, Object> postRequest(Map<String, Object> data) {
         HttpURLConnection conn = null;
         try {
-            URL url = new URL(API_URL);
+            URL url = new URL(config.getChatCompletionUrl());
             conn = (HttpURLConnection) url.openConnection();
             // Устраняем ошибку PKIX path building failed: доверяем всем сертификатам
             // (необходимо для встроенной JRE и корпоративных прокси/MITM).

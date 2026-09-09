@@ -1,0 +1,7 @@
+{
+  "name": "Создание реестра рисков в Excel",
+  "description": "Генерирует Excel-реестр рисков: риск, вероятность, влияние, приоритет, митигация, ответственный. Данные из таблицы risks БД проекта.",
+  "type": "http",
+  "endpoint": "agent:create_risks_excel",
+  "code": "function create_risks_excel(db_name, project_id):\n    # Извлекает риски из БД\n    risks = db.query('SELECT * FROM risks WHERE project_id = ? ORDER BY priority DESC', [project_id])\n    # Формирует Excel с листом Risks и сводкой по приоритетам\n    return file_creator.createExcelFromDb(db_name, 'risks', {\n        'Risks': risks,\n        'Summary': {\n            'high': count(risks, 'priority', 'high'),\n            'medium': count(risks, 'priority', 'medium'),\n            'low': count(risks, 'priority', 'low')\n        }\n    })"
+}

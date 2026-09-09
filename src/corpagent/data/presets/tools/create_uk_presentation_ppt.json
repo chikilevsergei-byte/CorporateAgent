@@ -1,0 +1,7 @@
+{
+  "name": "Создание презентации к УК в PPT",
+  "description": "Генерирует презентацию для управляющего комитета: сводка проекта, достижения, риски, запросы на решения. Данные из БД проекта.",
+  "type": "http",
+  "endpoint": "agent:create_uk_presentation_ppt",
+  "code": "function create_uk_presentation_ppt(db_name, project_id):\n    # Извлекает данные для УК\n    project = db.query('SELECT * FROM project WHERE id = ?', [project_id])\n    status_summary = compute_status_summary(project_id)\n    top_risks = db.query('SELECT * FROM risks WHERE project_id = ? ORDER BY priority DESC LIMIT 5', [project_id])\n    decisions_needed = db.query('SELECT * FROM uk_decisions WHERE project_id = ?', [project_id])\n    # Формирует PPTX для УК (8-10 слайдов)\n    content = generate_uk_presentation(project, status_summary, top_risks, decisions_needed)\n    return file_creator.createPptx(content, null)"
+}
