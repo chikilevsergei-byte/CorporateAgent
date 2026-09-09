@@ -5,9 +5,9 @@ import java.util.Calendar;
 /**
  * Учёт токенов и защита от перерасхода (завершение A1 / Этап D1).
  *
- * <p>Статистика суммы токенов (по данным {@code usage} ответов DeepSeek API):
+ * <p>Статистика суммы токенов (по данным {@code usage} ответов моделей):
  * prompt+completion за сессию/«сегодня», оценка стоимости по формуле
- * 20 млн токенов = 1$.</p>
+ * 17 604 300 токенов = 1 $ (актуальный курс проекта; см. TOKENS_PER_DOLLAR).</p>
  *
  * <p>Поддерживается «суточный лимит токенов» ({@link #setDailyLimit(long)}):
  * пока включён (лимит &gt; 0), {@link #canSpendToday(long)} возвращает false,
@@ -20,7 +20,7 @@ import java.util.Calendar;
  */
 public final class TokenBudget {
 
-    public static final double TOKENS_PER_DOLLAR = 20_000_000.0;
+    public static final double TOKENS_PER_DOLLAR = 17_604_300.0;
 
     private static volatile long todayTokens;
     private static String todayKey = dayKey();
@@ -57,7 +57,7 @@ public final class TokenBudget {
         return todayTokens;
     }
 
-    /** Оценка стоимости сегодняшнего расхода в долларах (20 млн токенов = 1$). */
+    /** Оценка стоимости сегодняшнего расхода в долларах (17 604 300 токенов = 1 $). */
     public static synchronized double costTodayUsd() {
         return tokensToday() / TOKENS_PER_DOLLAR;
     }
