@@ -190,12 +190,17 @@ public class Agent {
             if (intent == IntentRouter.Intent.PRESENTATION) {
                 String prompt = "Создай структуру презентации по запросу: " + fullMessage
                         + "\nФормат:\nЗаголовок слайда 1\nТекст слайда 1\n---SLIDE---\nЗаголовок слайда 2\nТекст слайда 2\n---SLIDE---\nСоздай 5-7 слайдов.";
-                String content = llm.call(singleUser(prompt), systemPrompt);
+                                String content = llm.call(singleUser(prompt), systemPrompt);
                 if (content.startsWith("❌")) {
                     result.response = content;
                     return result;
                 }
-                String filePath = fileCreator.createPptx(content, null);
+                // Для инструмента «Создание презентации … Супер Ленты» используем фирменный корп.
+                // шаблон (папка Шаблоны/): мастер/тема применяется, слайды-примеры убираются.
+                // Остальные PPT-генерации (например «Создание статуса в PPT») идут как раньше — без шаблона.
+                String template = isSuperLentaPresentationTool(toolsContext)
+                        ? fileCreator.getCorporatePresentationTemplate() : null;
+                String filePath = fileCreator.createPptx(content, template);
                 if (filePath.startsWith("ОШИБКА")) {
                     result.response = "❌ " + filePath;
                     return result;
@@ -387,6 +392,21 @@ public class Agent {
             }
         }
         return false;
+    }
+
+        /** Признак того, что выбран PPT-инструмент, строящий презентацию по корп. шаблону Супер Ленты.
+     *  Учитываются и текущее (новое) имя, и унаследованное «Создание презентации к УК в PPT»:
+     *  в уже сохранённых данных (tools.json) имя может остаться прежним до обновления пресета. */
+    private static boolean isSuperLentaPresentationTool(String toolsContext) {
+        if (toolsContext == null || toolsContext.isEmpty()) {
+            return false;
+        }
+        String lower = toolsContext.toLowerCase();
+        // Новое имя инструмента («…в шаблоне Супер Ленты») либо унаследованное «…к УК».
+        return lower.contains("создание презентации в шаблоне супер ленты")
+                || lower.contains("создание презентации в шаблоне супер")
+                                || lower.contains("создание презентации к ук")
+                || lower.contains("создание презентации в шаблоне");
     }
 
     /** Извлекает имена из контекста вида "- имя: описание" (по строке на элемент). */

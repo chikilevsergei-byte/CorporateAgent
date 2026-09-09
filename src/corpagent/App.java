@@ -35,7 +35,7 @@ public class App {
                     baseDir + java.io.File.separator + "databases",
                     baseDir + java.io.File.separator + "backups",
                     store);
-            FileCreator fileCreator = new FileCreator(baseDir + java.io.File.separator + "output");
+            FileCreator fileCreator = new FileCreator(baseDir + java.io.File.separator + "output", baseDir);
             Agent agent = new Agent(config, store, dbManager, fileCreator);
 
             SwingUtilities.invokeLater(new Runnable() {

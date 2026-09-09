@@ -32,7 +32,7 @@ public class DataStore {
             saveAll();
         }
         // Загрузка предустановленных данных (P1.1–P1.3) при первом запуске.
-        boolean presetsApplied = PresetLoader.applyIfEmpty(this);
+        boolean presetsApplied = PresetLoader.applyIfEmpty(this, baseDir);
         if (presetsApplied) {
             saveAll();
         }
@@ -174,12 +174,55 @@ public class DataStore {
         tools.put(name, tool);
     }
 
-    public void removeTool(String name) {
+        public void removeTool(String name) {
         if (isPresetEntry(tools, name)) {
             System.err.println("[DataStore] Запрещено удаление пресет-инструмента: " + name);
             return;
         }
         tools.remove(name);
+    }
+
+    /**
+     * Внутренняя операция обновления каталога пресет-инструментов при смене имени/endpoint
+     * фирменного пресета (например, «…к УК в PPT» → «…в шаблоне Супер Ленты»).
+     * Намеренно выполняется поверх API-защиты пресетов (не через {@link #removeTool} /
+     * {@link #putTool}): это легальный способ обновить устаревший пресет-инструмент
+     * из кода пресетов {@link corpagent.data.PresetLoader}. Счётчик использования и флаги
+     * старой записи переносятся в новую.
+     *
+     * @param legacyName ключ устаревшей пресет-записи (может быть null)
+     * @param canonical целевая пресет-запись (поле {@code name} = новый ключ)
+     * @return true, если перенос реально выполнен
+     */
+    public boolean migratePresetTool(String legacyName, Map<String, Object> canonical) {
+        String newName = Json.str(canonical, "name", "").trim();
+        if (newName.isEmpty()) {
+            return false;
+        }
+        if (legacyName != null && tools.containsKey(legacyName)) {
+            Map<String, Object> old = Json.asMap(tools.get(legacyName));
+            if (old != null && Json.bool(old, "preset", false)) {
+                // Переносим пользовательские атрибуты (если их нет в целевом значении).
+                if (old.containsKey("usage_count") && !canonical.containsKey("usage_count")) {
+                    canonical.put("usage_count", old.get("usage_count"));
+                }
+                if (old.containsKey("enabled") && !canonical.containsKey("enabled")) {
+                    canonical.put("enabled", old.get("enabled"));
+                }
+            }
+            tools.remove(legacyName); // прямое внутреннее удаление (обновление пресета)
+        }
+        if (!Json.bool(canonical, "preset", false)) {
+            canonical.put("preset", true);
+        }
+        if (!canonical.containsKey("created")) {
+            canonical.put("created", Utils.nowIso());
+        }
+        if (!canonical.containsKey("usage_count")) {
+            canonical.put("usage_count", 0);
+        }
+        tools.put(newName, canonical);
+        return true;
     }
 
 

@@ -144,6 +144,20 @@ if errorlevel 1 (
 echo Compilation successful.
 echo.
 
+REM ============================================================
+REM  Copy preset resources (skills/tools/databases JSON) into the
+REM  classes folder so they end up on the classpath root of the jar
+REM  at /presets/... (PresetLoader reads via getResourceAsStream).
+REM ============================================================
+if exist "%SRC_DIR%\corpagent\data\presets" (
+    if not exist "%OUT_DIR%\presets" mkdir "%OUT_DIR%\presets"
+    echo Copying preset resources into jar classpath root...
+    xcopy /e /i /y "%SRC_DIR%\corpagent\data\presets" "%OUT_DIR%\presets" >nul
+    echo Preset resources copied to %OUT_DIR%\presets
+) else (
+    echo [WARN] Preset folder not found: %SRC_DIR%\corpagent\data\presets
+)
+
 REM --- Create manifest ---
 echo Main-Class: %MAIN_CLASS%> dist\MANIFEST.MF
 echo.>> dist\MANIFEST.MF

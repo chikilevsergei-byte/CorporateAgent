@@ -259,7 +259,7 @@ public class ChatView extends JPanel {
     private void showWelcome() {
         addInfo("<b>👋 Добро пожаловать!</b><br>Нажмите <b>➕ Новый чат</b> в боковой панели, чтобы начать.<br><br>"
                 + "<b>Что я умею:</b><br>"
-                + "💬 Отвечать на вопросы (модель: DeepSeek)<br>"
+                + "💬 Отвечать на вопросы (провайдер: " + escapeHtml(providerDisplayName()) + ")<br>"
                 + "📊 Создавать презентации (PPTX)<br>"
                 + "📈 Создавать Excel-таблицы<br>"
                 + "🗄️ Создавать и управлять базами данных<br>"
@@ -267,6 +267,22 @@ public class ChatView extends JPanel {
                 + "🧠 Сохранять навыки и инструменты<br>"
                 + "📊 Визуализировать данные из БД<br>"
                 + "🔄 Автоматически обновлять БД на основе контекста разговора");
+    }
+
+    /** Человекочитаемое имя текущего провайдера из конфига (для приветственного экрана). */
+    private String providerDisplayName() {
+        corpagent.util.Config cfg = frame.getConfig();
+        String p = cfg == null ? "" : cfg.getProvider();
+        if (corpagent.util.Config.PROVIDER_YANDEX.equals(p)) {
+            return "Яндекс ИИ студия";
+        }
+        if (corpagent.util.Config.PROVIDER_QWEN.equals(p)) {
+            return "Alibaba Qwen";
+        }
+        if (corpagent.util.Config.PROVIDER_CUSTOM.equals(p)) {
+            return "Пользовательский провайдер";
+        }
+        return "DeepSeek";
     }
 
     private void addInfo(String html) {
@@ -392,17 +408,26 @@ public class ChatView extends JPanel {
                 }
             }
         }
-        String skillsContext = null;
+                String skillsContext = null;
         if (chipsBar.hasSkills()) {
             StringBuilder sb = new StringBuilder();
             Map<String, Object> s = frame.getStore().getSkills();
             for (String skill : chipsBar.getSelectedSkills()) {
                 Map<String, Object> skillData = Json.asMap(s.get(skill));
                 String desc = skillData == null ? "" : Json.str(skillData, "description");
+                String code = skillData == null ? "" : Json.str(skillData, "code");
                 if (sb.length() > 0) {
                     sb.append("\n");
                 }
-                sb.append("- ").append(skill).append(": ").append(desc);
+                sb.append("- ").append(skill);
+                if (!desc.isEmpty()) {
+                    sb.append(": ").append(desc);
+                }
+                // R-P1.x: содержательные инструкции навыка лежат в code (system_prompt-блок).
+                // Инжектим их в контекст, иначе до LLM доходит только краткое описание.
+                if (!code.isEmpty()) {
+                    sb.append("\n  Инструкции навыка:\n  ").append(code.trim());
+                }
             }
             skillsContext = sb.toString();
         }

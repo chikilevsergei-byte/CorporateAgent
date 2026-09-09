@@ -59,7 +59,7 @@ public final class PresetLoader {
             loadResource("presets/tools/create_risks_excel.json"),
             // 3. Создание статуса проекта в PPT
             loadResource("presets/tools/create_status_ppt.json"),
-            // 4. Создание презентации к УК в PPT
+            // 4. Создание презентации в шаблоне Супер Ленты
             loadResource("presets/tools/create_uk_presentation_ppt.json")
     };
 
@@ -102,12 +102,74 @@ public final class PresetLoader {
      *
      * @return true, если какие-то данные были добавлены
      */
-    public static boolean applyIfEmpty(DataStore store) {
+    public static boolean applyIfEmpty(DataStore store, String baseDir) {
         boolean changed = false;
         changed |= applySkills(store);
         changed |= applyTools(store);
-        changed |= applyDatabases(store);
+        changed |= applyDatabases(store, baseDir);
+        // Синхронизируем презентационный инструмент: если в уже сохранённом хранилище
+        // осталась пресет-запись под прежним именем («…к УК в PPT», endpoint
+        // agent:create_uk_presentation_ppt), приводим её к актуальному пресету
+        // («…в шаблоне Супер Ленты», endpoint agent:create_presentation) — и не только
+        // при первом запуске: пресеты не переустанавливаются в непустое хранилище.
+        changed |= upgradePresentationTool(store);
         return changed;
+    }
+
+    /**
+     * Приводит пресет-инструмент презентаций к актуальному имени/endpoint/коду в
+     * существующем (уже не пустом) хранилище, вынося переименование из «к УК в PPT»
+     * в «в шаблоне Супер Ленты». Возвращает true, если что-то изменилось.
+     */
+    private static boolean upgradePresentationTool(DataStore store) {
+        String legacyKey = null;
+        for (Map.Entry<String, Object> e : store.getTools().entrySet()) {
+            Map<String, Object> t = Json.asMap(e.getValue());
+            if (t == null || !isPresetTool(t)) {
+                continue;
+            }
+            String name = Json.str(t, "name", "").toLowerCase();
+            String ep = Json.str(t, "endpoint", "");
+            if (name.contains("презентации к ук")
+                    || "agent:create_uk_presentation_ppt".equals(ep)) {
+                legacyKey = e.getKey();
+                break;
+            }
+        }
+        Map<String, Object> canonical = parsePresetTool(
+                "presets/tools/create_uk_presentation_ppt.json");
+        String canonicalName = canonical == null ? "" : Json.str(canonical, "name", "");
+        if (canonical == null || canonicalName.isEmpty()) {
+            return false;
+        }
+        // Если актуальная (новое имя/endpoint) уже на месте и старой записи нет — нечего делать.
+        if (legacyKey == null && store.getTools().containsKey(canonicalName)) {
+            return false;
+        }
+        // Обязательные служебные поля пресета.
+        canonical.put("preset", true);
+        canonical.put("icon", Json.str(canonical, "icon", "🛠️"));
+        canonical.put("type", Json.str(canonical, "type", "http"));
+        canonical.put("endpoint", Json.str(canonical, "endpoint", ""));
+        if (!canonical.containsKey("enabled")) canonical.put("enabled", true);
+        if (!canonical.containsKey("created")) canonical.put("created", Utils.nowIso());
+        canonical.put("updated", Utils.nowIso());
+        store.migratePresetTool(legacyKey, canonical);
+        return true;
+    }
+
+    /** Парсит пресет-инструмент из classpath-ресурса в карту (или null). */
+    private static Map<String, Object> parsePresetTool(String resource) {
+        String jsonStr = loadResource(resource);
+        if (jsonStr == null) {
+            return null;
+        }
+        try {
+            Map<String, Object> t = Json.asMap(Json.parse(jsonStr));
+            return t == null ? null : t;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     /** Загружает пресет-навыки, если хранилище навыков пустое. */
@@ -173,8 +235,15 @@ public final class PresetLoader {
         return changed;
     }
 
-    /** Загружает пресет-БД, если хранилище БД пустое. Создаёт .db-файл с schema. */
-    private static boolean applyDatabases(DataStore store) {
+    /**
+     * Загружает пресет-БД, если хранилище БД пустое. Создаёт .db-файл с schema.
+     *
+     * <p>Путь в пресет-JSON относительный вида {@code databases/name.db} (со слешами,
+     * т.к. это ресурсное соглашение). Резолвим его к реальному baseDir и сохраняем
+     * в записи абсолютный путь — иначе на Windows File.separator='\' не совпадает с
+     * '/' в пути, а .db создавался бы в рабочей папке, а не в corpagent.base.</p>
+     */
+    private static boolean applyDatabases(DataStore store, String baseDir) {
         if (!store.getDatabases().isEmpty()) {
             return false;
         }
@@ -187,17 +256,20 @@ public final class PresetLoader {
                 if (db == null) continue;
                 String name = Json.str(db, "name");
                 if (name.isEmpty()) continue;
-                String dbPath = Json.str(db, "path");
+                String relPath = Json.str(db, "path");
                 String schema = Json.str(db, "schema", "");
+                // Резолвим путь к baseDir и нормализуем разделители под текущую ОС.
+                String absPath = resolveDbPath(baseDir, relPath);
                 db.put("preset", true);
                 db.put("type", "sqlite");
+                db.put("path", absPath);
                 db.put("enabled", Json.bool(db, "enabled", true));
                 db.put("created", Utils.nowIso());
                 db.put("usage_count", 0);
                 store.putDatabase(name, db);
                 // Создаём .db-файл с schema
                 if (!schema.isEmpty()) {
-                    createPresetDb(dbPath, schema, name);
+                    createPresetDb(absPath, schema, name);
                 }
                 changed = true;
             } catch (Exception e) {
@@ -207,14 +279,33 @@ public final class PresetLoader {
         return changed;
     }
 
-    /** Создаёт SQLite-файл пресет-БД из schema. */
-    private static void createPresetDb(String dbPath, String schema, String dbName) {
+    /**
+     * Превращает относительный путь пресета (например {@code databases/lpg_methodology.db})
+     * в абсолютный под {@code baseDir}, заменяя и '/' (как в ресурсном пути), и '\' на
+     * разделитель текущей платформы. Абсолютный путь возвращается как есть.
+     */
+    private static String resolveDbPath(String baseDir, String relPath) {
+        if (relPath == null || relPath.isEmpty()) {
+            return baseDir;
+        }
+        String norm = relPath.replace('/', java.io.File.separatorChar)
+                             .replace('\\', java.io.File.separatorChar);
+        java.io.File f = new java.io.File(norm);
+        if (f.isAbsolute()) {
+            return f.getPath();
+        }
+        java.io.File combined = new java.io.File(baseDir, norm);
+        return combined.getAbsolutePath();
+    }
+
+    /** Создаёт SQLite-файл пресет-БД из schema по уже зарезолвленному абсолютному пути. */
+    private static void createPresetDb(String absDbPath, String schema, String dbName) {
         try {
-            // Убедимся, что директория databases существует
-            String dir = dbPath.substring(0, dbPath.lastIndexOf(java.io.File.separator));
+            // Директория (без разделителя в конце) для .db-файла.
+            String dir = absDbPath.substring(0, absDbPath.lastIndexOf(java.io.File.separatorChar));
             Utils.mkdirs(dir);
             // Создаём БД
-            Connection conn = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
+            Connection conn = DriverManager.getConnection("jdbc:sqlite:" + absDbPath);
             Statement stmt = conn.createStatement();
             // Разбиваем schema на отдельные операторы
             String[] statements = schema.split(";");
@@ -226,7 +317,7 @@ public final class PresetLoader {
             }
             stmt.close();
             conn.close();
-            System.out.println("[PresetLoader] Создана БД: " + dbName + " -> " + dbPath);
+            System.out.println("[PresetLoader] Создана БД: " + dbName + " -> " + absDbPath);
         } catch (Exception e) {
             System.err.println("[PresetLoader] Ошибка создания БД " + dbName + ": " + e.getMessage());
         }

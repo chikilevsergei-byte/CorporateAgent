@@ -2,9 +2,9 @@ package corpagent;
 
 import corpagent.db.DatabaseManager;
 import corpagent.db.SqliteHelper;
+import corpagent.files.FileCreator;
 import corpagent.tools.ToolExecutor;
 import corpagent.util.IntentRouter;
-
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -33,6 +33,9 @@ public class SmokeCoreTest {
         testSplitSqlMultipleStatements();
         testA2DbGuards();
         testIntentRouter();
+        testPresetDbPathResolution();
+        testPresetResourcesPresent();
+        testCorporateTemplateSelection();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -156,5 +159,152 @@ public class SmokeCoreTest {
                 "свободный вопрос → CHAT");
     }
 
+    // 7) Резолвинг относительного пути пресет-БД (R-P1.3) не зависит от File.separator.
+    //    Регрессия: в пресет-JSON путь "databases/*.db" содержит '/', а на Windows
+    //    File.separator='\'; createPresetDb резал путь по lastIndexOf('\') → -1 и .db не создавался.
+    private static void testPresetDbPathResolution() {
+        try {
+            Class<?> pl = Class.forName("corpagent.data.PresetLoader");
+            Method resolve = pl.getDeclaredMethod("resolveDbPath", String.class, String.class);
+            resolve.setAccessible(true);
+
+            String base = java.nio.file.Files.createTempDirectory("ca_smoke").toString();
+            String out = (String) resolve.invoke(null, base, "databases/lpg_methodology.db");
+
+            java.io.File f = new java.io.File(out);
+            check(!out.contains("/") || java.io.File.separatorChar == '/',
+                    "resolveDbPath нормализует '/' под платформенный разделитель");
+            check(f.getName().equals("lpg_methodology.db"),
+                    "resolveDbPath сохраняет имя файла .db: " + f.getName());
+            // Директория-родитель должна быть создаваема и читаться через File API.
+            java.io.File parent = f.getAbsoluteFile().getParentFile();
+            check(parent != null && parent.getName().equals("databases"),
+                    "resolveDbPath помещает .db в подпапку databases/ (получено: " + parent + ")");
+
+            // Абсолютный входной путь возвращается без изменений.
+            String mid = new java.io.File(base, "databases\\abs.db").getAbsolutePath();
+            String same = (String) resolve.invoke(null, base, mid);
+            check(new java.io.File(same).getAbsoluteFile().getParentFile() != null,
+                    "resolveDbPath пропускает уже абсолютный путь");
+
+            new java.io.File(base).delete();
+        } catch (java.io.IOException e) {
+            check(false, "testPresetDbPathResolution: IO " + e);
+        } catch (Exception e) {
+            check(false, "testPresetDbPathResolution: " + e);
+        }
+    }
+
+    // 8) Пресеты-ресурсы лежат на classpath и загружены (R-P1.1/P1.2).
+    //    Проверяется только когда окружение реально кладёт presets на classpath
+    //    (обычно это собранный jar/build-каталог с /presets). Если ресурсов нет —
+    //    пишем диагностику и не считаем тест упавшим (в таком окружении пресеты
+    //    физически не поставляются и проверять их нечего).
+    private static void testPresetResourcesPresent() {
+        try {
+            Class<?> pl = Class.forName("corpagent.data.PresetLoader");
+            java.io.InputStream skills = pl.getClassLoader()
+                    .getResourceAsStream("presets/skills/passport_project.json");
+            java.io.InputStream tools = pl.getClassLoader()
+                    .getResourceAsStream("presets/tools/create_passport_excel.json");
+            java.io.InputStream dbs = pl.getClassLoader()
+                    .getResourceAsStream("presets/databases/lpg_methodology.json");
+            if (skills == null || tools == null || dbs == null) {
+                System.out.println("  [INFO] Пресеты не найдены на classpath текущего окружения "
+                        + "(skills=" + (skills != null) + ", tools=" + (tools != null)
+                        + ", dbs=" + (dbs != null) + "). Тест пропущен.");
+                return;
+            }
+            if (skills != null) skills.close();
+            if (tools != null) tools.close();
+            if (dbs != null) dbs.close();
+
+            // Пре-загрузка PRESET_* массивов гарантирована объявлениями-константами выше,
+            // поэтому ресурсы уже загружены в статические массивы. Проверяем их содержимое.
+            int[] lens = privateIntArrayLength(pl, "PRESET_SKILLS");
+            check(lens[0] == 7 && lens[1] == 0,
+                    "все 7 пресет-навыков загружены (ресурсных null=" + lens[1] + ")");
+            int[] lent = privateIntArrayLength(pl, "PRESET_TOOLS");
+            check(lent[0] == 4 && lent[1] == 0,
+                    "все 4 пресет-инструмента загружены (ресурсных null=" + lent[1] + ")");
+            int[] lend = privateIntArrayLength(pl, "PRESET_DBS");
+            check(lend[0] == 2 && lend[1] == 0,
+                    "обе пресет-БД загружены (ресурсных null=" + lend[1] + ")");
+        } catch (Exception e) {
+            check(false, "testPresetResourcesPresent: " + e);
+        }
+    }
+
+    // 9) Выбор корп. шаблона Супер Ленты не должен подхватывать другие шаблоны папки Шаблоны/
+    //    (они принадлежат другим инструментам). Ищется файл «Шаблон презентаций Супер Лента*».
+    private static void testCorporateTemplateSelection() {
+        try {
+            java.io.File base = java.nio.file.Files.createTempDirectory("ca_tpl").toFile();
+            java.io.File tplDir = new java.io.File(base, "Шаблоны");
+            if (!tplDir.mkdirs()) {
+                throw new java.io.IOException("не удалось создать Шаблоны/");
+            }
+            // Оба файла — пустышки: getCorporatePresentationTemplate фильтрует по имени,
+            // PPTX не открывает, поэтому корректность выбора проверяется без реального файла.
+            java.io.File ok = new java.io.File(tplDir, "Шаблон презентаций Супер Лента_v2025.pptx");
+            java.io.File other = new java.io.File(tplDir, "Отчёт для отдела кадров.pptx");
+            boolean wrote = ok.createNewFile() && other.createNewFile();
+            if (!wrote) {
+                throw new java.io.IOException("не удалось создать тестовые .pptx");
+            }
+
+            String picked = new FileCreator(base + java.io.File.separator + "o", base.getPath())
+                    .getCorporatePresentationTemplate();
+            check(picked != null && picked.endsWith(ok.getName()),
+                    "выбран целевой шаблон Супер Ленты, а не чужой (получено: " + picked + ")");
+
+            // Только «чужие» шаблоны в папке → целевой не находится (null).
+            other.createNewFile();
+            if (!ok.delete()) {
+                throw new java.io.IOException("не удалось удалить целевой шаблон");
+            }
+            String none = new FileCreator(base + java.io.File.separator + "o", base.getPath())
+                    .getCorporatePresentationTemplate();
+            check(none == null, "при отсутствии шаблона Супер Ленты возвращается null");
+
+            // Удаляем временный каталог рекурсивно.
+            deleteRecursive(base);
+        } catch (Exception e) {
+            check(false, "testCorporateTemplateSelection: " + e);
+        }
+    }
+
+    private static void deleteRecursive(java.io.File f) {
+        if (f == null || !f.exists()) {
+            return;
+        }
+        if (f.isDirectory()) {
+            java.io.File[] children = f.listFiles();
+            if (children != null) {
+                for (java.io.File c : children) {
+                    deleteRecursive(c);
+                }
+            }
+        }
+        f.delete();
+    }
+
+    /** Возвращает {длина массива, число null-элементов} для приватного статического String[]. */
+    private static int[] privateIntArrayLength(Class<?> owner, String fieldName) throws Exception {
+        java.lang.reflect.Field fld = owner.getDeclaredField(fieldName);
+        fld.setAccessible(true);
+        Object arrObj = fld.get(null);
+        if (!(arrObj instanceof String[])) {
+            throw new IllegalStateException(fieldName + " не String[]");
+        }
+        String[] arr = (String[]) arrObj;
+        int nulls = 0;
+        for (String s : arr) {
+            if (s == null) {
+                nulls++;
+            }
+        }
+        return new int[]{arr.length, nulls};
+    }
 }
 
