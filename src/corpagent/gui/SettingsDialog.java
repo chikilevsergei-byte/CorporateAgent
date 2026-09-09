@@ -62,7 +62,7 @@ public class SettingsDialog extends JDialog {
     // Вкладка «Модель»
     private final JPasswordField apiKeyField = new JPasswordField(30);
     private final JComboBox<String> providerCombo = new JComboBox<String>(new String[]{
-            "DeepSeek", "Яндекс ИИ студия", "Другой (OpenAI-совместимый)"});
+            "DeepSeek", "Яндекс ИИ студия", "Alibaba Qwen", "Другой (OpenAI-совместимый)"});
     private final JTextField baseUrlField = new JTextField(30);
     private final JComboBox<String> modelCombo = new JComboBox<String>(new String[]{
             "deepseek-chat", "deepseek-reasoner"});
@@ -328,6 +328,9 @@ public class SettingsDialog extends JDialog {
         if (s.contains("Яндекс")) {
             return Config.PROVIDER_YANDEX;
         }
+        if (s.contains("Alibaba") || s.contains("Qwen")) {
+            return Config.PROVIDER_QWEN;
+        }
         if (s.contains("Другой") || s.contains("Друг")) {
             return Config.PROVIDER_CUSTOM;
         }
@@ -338,6 +341,9 @@ public class SettingsDialog extends JDialog {
     private static String providerLabel(String code) {
         if (Config.PROVIDER_YANDEX.equals(code)) {
             return "Яндекс ИИ студия";
+        }
+        if (Config.PROVIDER_QWEN.equals(code)) {
+            return "Alibaba Qwen";
         }
         if (Config.PROVIDER_CUSTOM.equals(code)) {
             return "Другой (OpenAI-совместимый)";
@@ -352,6 +358,10 @@ public class SettingsDialog extends JDialog {
             modelCombo.addItem("yandexgpt-lite");
             modelCombo.addItem("yandexgpt");
             modelCombo.addItem("yandexgpt-32k");
+        } else if (Config.PROVIDER_QWEN.equals(provider)) {
+            modelCombo.addItem("qwen-max");
+            modelCombo.addItem("qwen-plus");
+            modelCombo.addItem("qwen-turbo");
         } else if (Config.PROVIDER_CUSTOM.equals(provider)) {
             modelCombo.addItem("gpt-4o");
             modelCombo.addItem("gpt-4o-mini");

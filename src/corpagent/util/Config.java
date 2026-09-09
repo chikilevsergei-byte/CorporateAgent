@@ -17,6 +17,8 @@ public class Config {
     public static final String PROVIDER_DEEPSEEK = "deepseek";
     /** Имя провайдера Яндекс AI Studio (совместимый endpoint). */
     public static final String PROVIDER_YANDEX = "yandex";
+    /** Имя провайдера Alibaba Qwen (OpenAI-совместимый endpoint). */
+    public static final String PROVIDER_QWEN = "qwen";
     /** Произвольный OpenAI-совместимый провайдер. */
     public static final String PROVIDER_CUSTOM = "custom";
 
@@ -24,6 +26,8 @@ public class Config {
     public static final String BASE_URL_DEEPSEEK = "https://api.deepseek.com";
     /** Базовый URL Яндекс AI Studio (облачный OpenAI-совместимый endpoint). */
     public static final String BASE_URL_YANDEX = "https://llm.api.cloud.yandex.net/foundationModels/v1";
+    /** Базовый URL Alibaba Qwen (OpenAI-совместимый endpoint). */
+    public static final String BASE_URL_QWEN = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
     /** Относительный путь chat/completions поверх base_url. */
     private static final String CHAT_COMPLETIONS_PATH = "/chat/completions";
@@ -100,6 +104,9 @@ public class Config {
     public static String defaultBaseUrl(String provider) {
         if (PROVIDER_YANDEX.equals(provider)) {
             return BASE_URL_YANDEX;
+        }
+        if (PROVIDER_QWEN.equals(provider)) {
+            return BASE_URL_QWEN;
         }
         if (PROVIDER_CUSTOM.equals(provider)) {
             return "";
