@@ -45,3 +45,12 @@ Thumbs.db
 # Секреты и настройки с ключами
 config.json
 settings.json
+
+# --- release hygiene R-P3.1: scratch/backups/temp ---
+*.bak.*
+*.bak
+build_test/
+.continue/
+_startapp.bat
+DEVELOPMENT_PLAN.md.old_2026
+yandex_proxy.py
