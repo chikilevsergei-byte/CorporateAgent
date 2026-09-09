@@ -150,11 +150,20 @@ public class SmokeCoreTest {
                 "'таблиц' → EXCEL");
         check(IntentRouter.detect("создай базу данных projects") == IntentRouter.Intent.DATABASE,
                 "'создай базу данных …' → DATABASE");
-        // Ограничение текущей эвристики (как и в первоначальном коде): сокращение «БД»
-        // само по себе не распознаётся как create-db — осознанно сохраняем прежнее поведение,
-        // пока роутер не будет расширен более точными правилами.
-        check(IntentRouter.detect("создать БД по файлу") != IntentRouter.Intent.DATABASE,
-                "'создать БД по файлу' не ошибочно определяется как создание новой БД");
+        // C1.1 расширение: сокращение «БД»/«бд» в связке с глаголами создания распознаётся.
+        check(IntentRouter.detect("создать БД по файлу") == IntentRouter.Intent.DATABASE,
+                "'создать БД по файлу' → DATABASE (сокращение БД)");
+        check(IntentRouter.detect("создай бд для проектов") == IntentRouter.Intent.DATABASE,
+                "'создай бд для проектов' → DATABASE");
+        check(IntentRouter.detect("заведи базу данных рисков") == IntentRouter.Intent.DATABASE,
+                "'заведи базу данных …' → DATABASE");
+        // Не-создание (обновить/вопрос в активной БД) не создаёт новую схему.
+        check(IntentRouter.detect("обнови задачу в БД") != IntentRouter.Intent.DATABASE,
+                "'обнови задачу в БД' — работа с активной БД");
+        check(IntentRouter.detect("какие таблицы в бд?") != IntentRouter.Intent.DATABASE,
+                "вопрос о содержимом БД без создания → не DATABASE");
+        check(IntentRouter.detect("как устроена база данных проекта") != IntentRouter.Intent.DATABASE,
+                "нейтральное упоминание без глагола создания → не DATABASE");
         check(IntentRouter.detect("что нового в списке задач?") == IntentRouter.Intent.CHAT,
                 "свободный вопрос → CHAT");
     }

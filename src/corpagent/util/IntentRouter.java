@@ -26,6 +26,9 @@ public final class IntentRouter {
     /**
      * Определяет интент по текстовому содержимому запроса (с уже пришитыми файлами).
      *
+     * <p>C1.1: распознаёт не только явное создание документов, но и работу с базой данных
+     * ({@link #isCreateDbRequest(String)} умеет и полное «база данных», и сокращение «БД»).</p>
+     *
      * @param fullMessage исходное/полное сообщение пользователя (уже в нижнем регистре)
      * @return класс интента (никогда не null; по умолчанию {@link Intent#CHAT})
      */
@@ -51,10 +54,59 @@ public final class IntentRouter {
         if (m.contains("excel") || m.contains("таблиц") || m.contains("xlsx")) {
             return Intent.EXCEL;
         }
-        if ((m.contains("создай") || m.contains("создать") || m.contains("созд"))
-                && m.contains("баз") && m.contains("данны")) {
+        if (isCreateDbRequest(m)) {
             return Intent.DATABASE;
         }
         return null;
     }
+
+    /**
+     * Признак явной просьбы создать / завести новую базу данных. Распознаёт и развёрнутое
+     * «база данных», и сокращение «бд», но только в связке с глаголами создания/заведения
+     * (чтобы обычные вопросы/записи в уже активной БД не ошибочно создавали новую схему).
+     *
+     * @param m сообщение в нижнем регистре
+     */
+    public static boolean isCreateDbRequest(String m) {
+        if (m == null || m.isEmpty()) {
+            return false;
+        }
+        // Глаголы намерения «завести новую БД» (без ложного срабатывания на «обновить/посмотреть»).
+        boolean wantCreate = m.contains("создай") || m.contains("создать")
+                || m.contains("создам") || m.contains("заведи") || m.contains("завести")
+                || m.contains("завёл") || m.contains("собери базу") || m.contains("сделай базу");
+        if (!wantCreate) {
+            return false;
+        }
+        // Полное словосочетание «база/бáзы/базу/базой … данных» (любое склонение «баз… данных»)
+        // либо сокращение «бд» как отдельное слово.
+        boolean hasDbWord = (m.contains("баз") && m.contains("данн"))
+                || isStandaloneLatinToken(m, "бд");
+        return hasDbWord;
+    }
+
+    /**
+     * Правда, если последовательность {@code token} встречается в {@code m} как отдельное
+     * «слово», т.е. не входит в состав более длинного буквенного слова. Это надёжнее
+     * regexp-границы {@code \b}, которая в Java понимает только ASCII (кириллица не-word char).
+     */
+    private static boolean isStandaloneLatinToken(String m, String token) {
+        if (token == null || token.isEmpty()) {
+        return false;
+    }
+        int len = token.length();
+        int idx = m.indexOf(token);
+        while (idx >= 0) {
+            int left = idx - 1;
+            int right = idx + len;
+            boolean leftBoundary = left < 0 || !Character.isLetter(m.charAt(left));
+            boolean rightBoundary = right >= m.length() || !Character.isLetter(m.charAt(right));
+            if (leftBoundary && rightBoundary) {
+                return true;
 }
+            idx = m.indexOf(token, idx + 1);
+        }
+        return false;
+    }
+}
+
