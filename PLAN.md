@@ -11,8 +11,10 @@
 - [x] **R-P1.9.2** Заголовки проекта и «Без проекта»: выровнять влево, убрать иконку, заменить центрирующий `FlowLayout`.
 - [x] **R-P1.9.3** Сворачивание проекта (collapsible) в сайдбаре: `Set<String> collapsedProjects`, дисклокер `▸/▾`.
 - [x] **R-P1.9.4** Пункт «Переместить в проект…» в `showChatMenu` + `ProjectManager.applyProjectDefaults(store, chat, project)`.
-- [ ] **R-P1.9.5** Мастер проекта: выбор источника БД (существующая из `DataStore` / новая через `DbCreateFromFilesDialog`).
-- [ ] **R-P1.9.6** «Обновить БД проекта»: ИИ-сопоставление (upsert) + вопрос пользователю по конфликтам; запись через `db_execute`.
+- [x] **R-P1.9.5** Мастер проекта: выбор источника БД (существующая из `DataStore` / новая через доменную схему).
+      `ProjectManager.createProjectWithExistingDb(...)` + рефактор `createProjectRecordAndChats(...)`.
+- [x] **R-P1.9.6** «Обновить БД проекта»: `UpdateProjectDbDialog` + `Agent.generateDbUpsertPlan(...)` (ИИ-сопоставление upsert),
+      вопрос пользователю по конфликтам (удаление отсутствующих записей), запись через `DatabaseManager.autoExecuteSqlUpdates`.
 
 ## 🟠 P2 — надёжность БД и доменные сценарии
 - [ ] **C1.1 (остаток)** Интенты `update_db` / `question_db` / `protocol` / `status` + приоритеты в `IntentRouter`.

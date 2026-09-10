@@ -265,16 +265,29 @@ public class SidebarPanel extends JPanel {
         refreshChats();
     }
 
-    /** Меню проекта: удаление проекта вместе с его чатами (БД проекта остаётся). */
+        /** Меню проекта: обновление БД проекта (R-P1.9.6) и удаление проекта с чатами. */
     private void showProjectMenu(String projectId, String projectName) {
         Map<String, Object> project = frame.getStore().getProject(projectId);
         String db = project == null ? "" : Json.str(project, "db", "");
-        String[] options = {"Удалить проект", "Отмена"};
+        String[] options = {"Обновить БД проекта…", "Удалить проект", "Отмена"};
         int choice = JOptionPane.showOptionDialog(this,
                 "Проект: " + projectName + "\nБД проекта: " + db,
                 "Меню проекта", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
-                null, options, options[1]);
+                null, options, options[2]);
         if (choice == 0) {
+            // R-P1.9.6: ИИ-синхронизация БД проекта из другого источника.
+            if (db == null || db.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "У проекта не задана БД.",
+                        "Обновить БД проекта", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            UpdateProjectDbDialog dlg =
+                    new UpdateProjectDbDialog(frame, frame.getStore(), projectId, projectName, db);
+            dlg.setVisible(true);
+            if (dlg.isUpdated()) {
+                refresh();
+            }
+        } else if (choice == 1) {
             int confirm = JOptionPane.showConfirmDialog(this,
                     "Удалить проект '" + projectName + "' вместе с его чатами?\n"
                             + "Файл БД проекта ('" + db + "') останется в списке баз данных.",

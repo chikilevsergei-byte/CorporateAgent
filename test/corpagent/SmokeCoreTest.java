@@ -40,6 +40,7 @@ public class SmokeCoreTest {
         testMethodologyChatDefaults();
         testApplyProjectDefaults();
         testCreateProjectWithExistingDb();
+        testUpdateProjectDbHelpers();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -468,6 +469,51 @@ public class SmokeCoreTest {
                     "createProjectWithExistingDb: пустое имя проекта → success=false");
         } catch (Exception e) {
             check(false, "testCreateProjectWithExistingDb: " + e);
+        }
+    }
+
+    // 14) R-P1.9.6: разбор ИИ-плана синхронизации БД проекта.
+    //     Проверяем извлечение SQL-блока, секции конфликтов и построение DELETE-ов.
+    private static void testUpdateProjectDbHelpers() {
+        try {
+            Class<?> dlg = Class.forName("corpagent.gui.UpdateProjectDbDialog");
+
+            java.lang.reflect.Method extractSql =
+                    dlg.getDeclaredMethod("extractSqlBlock", String.class);
+            extractSql.setAccessible(true);
+            String plan = "План:\n```sql\nINSERT INTO tasks(title) VALUES('x');\n"
+                    + "UPDATE tasks SET status='done' WHERE id=1;\n```\n"
+                    + "###КОНФЛИКТЫ###\ntasks | id=7 | лишняя задача\nprojects | id=3 | лишний проект\n";
+            String sql = (String) extractSql.invoke(null, plan);
+            check(sql.contains("INSERT INTO tasks") && sql.contains("UPDATE tasks"),
+                    "extractSqlBlock: извлекает INSERT и UPDATE из ```sql```");
+
+            java.lang.reflect.Method extractConf =
+                    dlg.getDeclaredMethod("extractConflicts", String.class);
+            extractConf.setAccessible(true);
+            String conf = (String) extractConf.invoke(null, plan);
+            check(conf.contains("tasks") && conf.contains("id=7") && conf.contains("projects"),
+                    "extractConflicts: извлекает секцию конфликтов после маркера");
+
+            java.lang.reflect.Method buildDel =
+                    dlg.getDeclaredMethod("buildDeleteSql", String.class);
+            buildDel.setAccessible(true);
+            String del = (String) buildDel.invoke(null, conf);
+            check(del.contains("DELETE FROM tasks WHERE id=7"),
+                    "buildDeleteSql: формирует DELETE с WHERE id");
+            check(del.contains("DELETE FROM projects WHERE id=3"),
+                    "buildDeleteSql: обрабатывает несколько строк конфликтов");
+            // Некорректные строки игнорируются.
+            String delBad = (String) buildDel.invoke(null, "неверная строка без id\nDROP TABLE x;");
+            check(delBad != null && !delBad.toUpperCase().contains("DROP"),
+                    "buildDeleteSql: игнорирует некорректные строки (без DROP)");
+
+            // extractSqlBlock без блока ```sql``` возвращает текст до маркера конфликтов.
+            String noBlock = (String) extractSql.invoke(null, "SELECT 1;\n###КОНФЛИКТЫ###\nnone");
+            check(noBlock.contains("SELECT 1") && !noBlock.contains("КОНФЛИКТЫ"),
+                    "extractSqlBlock: без ```sql``` берёт текст до секции конфликтов");
+        } catch (Exception e) {
+            check(false, "testUpdateProjectDbHelpers: " + e);
         }
     }
 

@@ -28,9 +28,11 @@
 - **R-P1.9.2** Заголовки проекта и «Без проекта» выровнены влево (BoxLayout вместо центрирующего FlowLayout), убрана иконка `🗂️`.
 - **R-P1.9.3** Сворачивание проекта: `SidebarPanel.collapsedProjects` (в памяти сессии), дисклокер `▸/▾`, клик по заголовку скрывает/показывает чаты проекта.
 - **R-P1.9.4** «Переместить в проект…» в `showChatMenu` + `ProjectManager.applyProjectDefaults(store, chat, project)` и `roleForTitle(...)` — переносит проект-поля и дефолтные чипы (БД проекта + LPG, навык/инструменты роли).
+- **R-P1.9.5** Мастер проекта: выбор источника БД (существующая из списка `DataStore` / новая по доменной схеме). `ProjectManager.createProjectWithExistingDb(...)` + общий `createProjectRecordAndChats(...)`.
+- **R-P1.9.6** «Обновить БД проекта» (`UpdateProjectDbDialog`): источник — другая БД или файлы; `Agent.generateDbUpsertPlan(...)` строит план upsert (INSERT/UPDATE) и секцию `###КОНФЛИКТЫ###`; пользователь решает про удаление отсутствующих записей; запись через `DatabaseManager.autoExecuteSqlUpdates`.
 
 ## Тесты
-- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер, охранники, пресеты, пути, ProjectManager, перенос чата в проект). **67/67 OK**.
+- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер, охранники, пресеты, пути, ProjectManager, перенос чата в проект, проект на существующей БД, план синхронизации БД). **76/76 OK**.
 
 ## Рефакторинг (уменьшение стоимости контекста)
 - **perf(tokens)** `Agent.trimHistory` учитывает `systemPrompt` и `tool_calls`; `ToolExecutor.formatResult` ограничен 10 строками.
