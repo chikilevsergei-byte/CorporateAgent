@@ -38,6 +38,7 @@ public class ChatChipsBar extends JPanel {
     public static final int BTN_HEIGHT = 34;
 
     private final DataStore store;
+    private final MainFrame frame;
 
     private final JButton dbButton;
     private final JButton skillsButton;
@@ -46,6 +47,9 @@ public class ChatChipsBar extends JPanel {
     private int dbCount = 0;
     private int skillsCount = 0;
     private int toolsCount = 0;
+
+    /** id чата, для которого в чипы загружено текущее выделение (R-P0.2 / R-P1.5). */
+    private String loadedChatId = null;
 
     private final Set<String> selectedDatabases = new LinkedHashSet<String>();
     private final Set<String> selectedSkills = new LinkedHashSet<String>();
@@ -65,8 +69,9 @@ public class ChatChipsBar extends JPanel {
         return b;
     }
 
-    public ChatChipsBar(DataStore store) {
-        this.store = store;
+    public ChatChipsBar(MainFrame frame) {
+        this.frame = frame;
+        this.store = frame.getStore();
         setLayout(new FlowLayout(FlowLayout.LEFT, 0, 0));
         setOpaque(false);
 
@@ -86,8 +91,13 @@ public class ChatChipsBar extends JPanel {
         add(toolsButton);
     }
 
-    /** Обновляет счётчики и убирает выбранные элементы, которых больше нет. */
+    /**
+     * Обновляет счётчики и убирает выбранные элементы, которых больше нет.
+     * Также подгружает выделение текущего чата из его записи (R-P0.2 / R-P1.5):
+     * если активный чат сменился — выделение перезагружается из чата.
+     */
     public void refresh() {
+        loadSelectionForCurrentChat();
         prune(selectedDatabases, store.getDatabases());
         prune(selectedSkills, store.getSkills());
         prune(selectedTools, store.getTools());
@@ -99,6 +109,68 @@ public class ChatChipsBar extends JPanel {
         toolsButton.setText(countSuffix("Инструменты", toolsCount));
         revalidate();
         repaint();
+    }
+
+    /**
+     * Загружает выделение чипов из записи активного чата, если чат сменился.
+     * Данные чата — источник истины: авто-чаты проекта (R-P0.2) приходят
+     * с предустановленными {@code selected_databases/skills/tools}.
+     */
+    private void loadSelectionForCurrentChat() {
+        String chatId = frame.getCurrentChatId();
+        if (chatId == null) {
+            if (loadedChatId != null) {
+                selectedDatabases.clear();
+                selectedSkills.clear();
+                selectedTools.clear();
+                loadedChatId = null;
+            }
+            return;
+        }
+        if (chatId.equals(loadedChatId)) {
+            return;
+        }
+        loadedChatId = chatId;
+        selectedDatabases.clear();
+        selectedSkills.clear();
+        selectedTools.clear();
+        Map<String, Object> chat = store.getChat(chatId);
+        if (chat != null) {
+            selectedDatabases.addAll(stringList(Json.arr(chat, "selected_databases")));
+            selectedSkills.addAll(stringList(Json.arr(chat, "selected_skills")));
+            selectedTools.addAll(stringList(Json.arr(chat, "selected_tools")));
+        }
+    }
+
+    private List<String> stringList(List<Object> arr) {
+        List<String> out = new ArrayList<String>();
+        if (arr != null) {
+            for (Object o : arr) {
+                if (o != null) {
+                    out.add(String.valueOf(o));
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Сохраняет текущее выделение в запись активного чата, чтобы оно сохранялось
+     * между переключениями чатов и перезапусками приложения.
+     */
+    private void saveSelectionToCurrentChat() {
+        String chatId = frame.getCurrentChatId();
+        if (chatId == null) {
+            return;
+        }
+        Map<String, Object> chat = store.getChat(chatId);
+        if (chat == null) {
+            return;
+        }
+        chat.put("selected_databases", new ArrayList<Object>(selectedDatabases));
+        chat.put("selected_skills", new ArrayList<Object>(selectedSkills));
+        chat.put("selected_tools", new ArrayList<Object>(selectedTools));
+        store.saveAll();
     }
 
     private String countSuffix(String base, int n) {
@@ -244,6 +316,7 @@ public class ChatChipsBar extends JPanel {
         clear.addActionListener(ev -> {
             selected.clear();
             refresh();
+            saveSelectionToCurrentChat();
             popup.setVisible(false);
         });
         footer.add(clear);

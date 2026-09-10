@@ -269,6 +269,28 @@ public class MainFrame extends JFrame {
         return dbViewerView;
     }
 
+        /**
+     * Открывает мастер «Создать проект» (R-P0.2). При успехе обновляет сайдбар
+     * и выводит пользователя в первый чат-роль проекта.
+     */
+    public void createProject() {
+        CreateProjectDialog dialog = new CreateProjectDialog(this, store);
+        dialog.setVisible(true);
+        if (dialog.isCreated()) {
+            sidebar.refresh();
+            Map<String, Object> project = store.getProject(dialog.getCreatedProjectId());
+            String db = project == null ? "" : Json.str(project, "db", "");
+            String msg = "Проект создан!\n\n"
+                    + "База данных проекта: " + db + "\n"
+                    + "Созданные чаты-роли: " + (project == null ? ""
+                            : String.valueOf(Json.arr(project, "chat_roles") == null
+                                    ? 0 : Json.arr(project, "chat_roles").size()))
+                    + "\n\nВыберите нужный чат в списке «ЧАТЫ» слева.";
+            javax.swing.JOptionPane.showMessageDialog(this, msg,
+                    "Проект создан", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
     /** Создаёт новый чат и переходит к нему. */
     public void newChat() {
         String chatId = "chat_" + Utils.timestamp();

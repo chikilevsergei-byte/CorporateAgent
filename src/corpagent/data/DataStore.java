@@ -9,18 +9,22 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Хранилище данных приложения: чаты, навыки, инструменты, базы данных, логи БД.
+  * Хранилище данных приложения: чаты, навыки, инструменты, базы данных, логи БД, проекты.
  * Данные хранятся в JSON-файлах рядом с приложением (аналог session_state + load_data/save_data в v2).
  */
 public class DataStore {
 
     private final String baseDir;
 
+
+        
     private final Map<String, Object> chats = new LinkedHashMap<String, Object>();
     private final Map<String, Object> skills = new LinkedHashMap<String, Object>();
     private final Map<String, Object> tools = new LinkedHashMap<String, Object>();
     private final Map<String, Object> databases = new LinkedHashMap<String, Object>();
     private final Map<String, Object> dbLogs = new LinkedHashMap<String, Object>();
+    // R-P0.2: проекты рабочего места РП (метаданные проекта и связка с авто-чатами).
+    private final Map<String, Object> projects = new LinkedHashMap<String, Object>();
 
     public DataStore(String baseDir) {
         this.baseDir = baseDir;
@@ -46,8 +50,9 @@ public class DataStore {
         loadInto(chats, "chats");
         loadInto(skills, "skills");
         loadInto(tools, "tools");
-        loadInto(databases, "databases");
+                loadInto(databases, "databases");
         loadInto(dbLogs, "db_logs");
+        loadInto(projects, "projects");
     }
 
     @SuppressWarnings("unchecked")
@@ -74,6 +79,7 @@ public class DataStore {
         saveMap(tools, "tools");
         saveMap(databases, "databases");
         saveMap(dbLogs, "db_logs");
+        saveMap(projects, "projects");
     }
 
     private void saveMap(Map<String, Object> map, String name) {
@@ -309,8 +315,47 @@ public class DataStore {
         return new ArrayList<Object>();
     }
 
-        public void removeDbLogs(String dbName) {
+                    public void removeDbLogs(String dbName) {
         dbLogs.remove(dbName);
+    }
+
+    // ==================== ПРОЕКТЫ (R-P0.2) ====================
+
+    public Map<String, Object> getProjects() {
+        return projects;
+    }
+
+    public Map<String, Object> getProject(String projectId) {
+        Object p = projects.get(projectId);
+        return (p instanceof Map) ? (Map<String, Object>) p : null;
+    }
+
+    public void putProject(String projectId, Map<String, Object> project) {
+        projects.put(projectId, project);
+    }
+
+    /**
+     * Удаляет проект и связанные с ним авто-чаты (у которых поле {@code project}
+     * указывает на этот проект). Метаданные БД и сам .db-файл проекта не трогаются
+     * здесь — их удаляет вызывающий (пользователь решает судьбу данных).
+     *
+     * @return список идентификаторов удалённых чатов
+     */
+    public java.util.List<String> removeProject(String projectId) {
+        java.util.List<String> removedChats = new java.util.ArrayList<String>();
+        java.util.List<String> toRemove = new java.util.ArrayList<String>();
+        for (Map.Entry<String, Object> e : chats.entrySet()) {
+            Map<String, Object> c = Json.asMap(e.getValue());
+            if (c != null && projectId.equals(Json.str(c, "project", ""))) {
+                toRemove.add(e.getKey());
+            }
+        }
+        for (String id : toRemove) {
+            chats.remove(id);
+            removedChats.add(id);
+        }
+        projects.remove(projectId);
+        return removedChats;
     }
 
     // ==================== ЗАЩИТА ПРЕСЕТОВ (P1.x) ====================

@@ -37,7 +37,7 @@ public final class BackupManager {
             }
             // Собираем файлы для бэкапа
             List<File> files = new ArrayList<File>();
-            String[] jsonFiles = {"chats", "skills", "tools", "databases", "db_logs", "config", "settings"};
+            String[] jsonFiles = {"chats", "skills", "tools", "databases", "db_logs", "projects", "config", "settings"};
             for (String name : jsonFiles) {
                 String path = baseDir + java.io.File.separator + name + ".json";
                 File f = new File(path);
@@ -108,7 +108,7 @@ public final class BackupManager {
             }
         }
         // Копируем JSON-файлы в baseDir
-        String[] jsonFiles = {"chats", "skills", "tools", "databases", "db_logs", "config", "settings"};
+        String[] jsonFiles = {"chats", "skills", "tools", "databases", "db_logs", "projects", "config", "settings"};
         for (String name : jsonFiles) {
             File src = new File(tempDir, name + ".json");
             if (src.exists()) {

@@ -36,6 +36,7 @@ public class SmokeCoreTest {
         testPresetDbPathResolution();
         testPresetResourcesPresent();
         testCorporateTemplateSelection();
+        testProjectManager();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -281,6 +282,91 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testCorporateTemplateSelection: " + e);
         }
+    }
+
+    // 10) Мастер «Создать проект» (R-P0.2): санитизация имени БД, состав 7 ролей,
+    //     доменная схема БД проекта. Проверяется чистая логика без обращения к sqlite.
+    private static void testProjectManager() {
+        try {
+            Class<?> pm = Class.forName("corpagent.data.ProjectManager");
+
+            // Санитизация имени БД: пробелы/кириллица/спецсимволы → '_', схлопывание.
+            java.lang.reflect.Method sanitize = pm.getDeclaredMethod("sanitizeDbName", String.class);
+            sanitize.setAccessible(true);
+            check("my_project".equals(sanitize.invoke(null, "my project")),
+                    "sanitizeDbName: пробел → '_'");
+            check("Project_A-1".equals(sanitize.invoke(null, "Project A-1")),
+                    "sanitizeDbName: сохраняет дефис/цифры");
+            check("proj_2026".equals(sanitize.invoke(null, "proj 2026")),
+                    "sanitizeDbName: пробел между словами → '_'");
+            check(sanitize.invoke(null, "   ") == null,
+                    "sanitizeDbName: пустое/пробельное имя → null");
+            check(sanitize.invoke(null, "") == null,
+                    "sanitizeDbName: пустая строка → null");
+            // Кириллица (не-ASCII буквы) вытесняется; остаётся только цифровой «хвост».
+            check("1".equals(sanitize.invoke(null, "Проект 1")),
+                    "sanitizeDbName: кириллица вытесняется, остаётся цифра");
+
+            // 7 чатов-ролей проекта.
+            java.lang.reflect.Field rolesF = pm.getDeclaredField("CHAT_ROLES");
+            rolesF.setAccessible(true);
+            Object roles = rolesF.get(null);
+            int roleCount = java.lang.reflect.Array.getLength(roles);
+            check(roleCount == 7, "CHAT_ROLES: ровно 7 ролей (получено " + roleCount + ")");
+
+            // roleTitles() возвращает 7 разных непустых названий.
+            java.lang.reflect.Method roleTitles = pm.getDeclaredMethod("roleTitles");
+            roleTitles.setAccessible(true);
+            java.util.List<String> titles = castList(roleTitles.invoke(null));
+            check(titles.size() == 7, "roleTitles: 7 названий");
+            check(new java.util.HashSet<String>(titles).size() == 7, "roleTitles: названия уникальны");
+            boolean allNonEmpty = true;
+            for (String t : titles) {
+                if (t == null || t.trim().isEmpty()) {
+                    allNonEmpty = false;
+                }
+            }
+            check(allNonEmpty, "roleTitles: все названия непустые");
+
+            // Каждая роль ссылается на непустой навык (соответствие пресетам R-P1.1).
+            boolean skillRefs = true;
+            for (int i = 0; i < roleCount; i++) {
+                Object role = java.lang.reflect.Array.get(roles, i);
+                java.lang.reflect.Field skillF = role.getClass().getField("skill");
+                Object skill = skillF.get(role);
+                if (skill == null || String.valueOf(skill).trim().isEmpty()) {
+                    skillRefs = false;
+                }
+            }
+            check(skillRefs, "CHAT_ROLES: у каждой роли задан навык");
+
+            // Доменная схема БД проекта содержит ключевые таблицы.
+            java.lang.reflect.Field schemaF = pm.getDeclaredField("PROJECT_SCHEMA");
+            schemaF.setAccessible(true);
+            String schema = (String) schemaF.get(null);
+            String[] expected = {"project", "tasks", "risks", "meetings",
+                    "meeting_decisions", "team_member", "problem_statement", "goal_smart"};
+            for (String table : expected) {
+                check(schema.toLowerCase().contains("create table " + table),
+                        "PROJECT_SCHEMA содержит таблицу " + table);
+            }
+            check(!schema.toUpperCase().contains("FOREIGN KEY")
+                            && !schema.toUpperCase().contains("REFERENCES"),
+                    "PROJECT_SCHEMA без FOREIGN KEY/REFERENCES (совместимо с SQLite-движком)");
+
+            // LPG-методология подключается только на чтение — имя совпадает с пресетом.
+            java.lang.reflect.Field lpgF = pm.getDeclaredField("LPG_DB");
+            lpgF.setAccessible(true);
+            check("Методология LPG".equals(lpgF.get(null)),
+                    "LPG_DB указывает на 'Методология LPG'");
+        } catch (Exception e) {
+            check(false, "testProjectManager: " + e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.List<String> castList(Object o) {
+        return (java.util.List<String>) o;
     }
 
     private static void deleteRecursive(java.io.File f) {

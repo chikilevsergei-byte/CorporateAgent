@@ -53,7 +53,7 @@ public class ChatView extends JPanel {
 
     public ChatView(MainFrame frame) {
         this.frame = frame;
-        this.chipsBar = new ChatChipsBar(frame.getStore());
+        this.chipsBar = new ChatChipsBar(frame);
         setLayout(new BorderLayout());
         setBackground(Ui.SURFACE);
 

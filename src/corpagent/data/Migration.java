@@ -178,7 +178,7 @@ public final class Migration {
      * с суффиксом .bak.<timestamp>. Вызывается перед первой записью в новом формате.
      */
     public static void backupDataFiles(String baseDir) {
-        String[] names = {"chats", "skills", "tools", "databases", "db_logs", "config"};
+        String[] names = {"chats", "skills", "tools", "databases", "db_logs", "projects", "config"};
         String ts = Utils.timestamp();
         for (String name : names) {
             String src = baseDir + java.io.File.separator + name + ".json";

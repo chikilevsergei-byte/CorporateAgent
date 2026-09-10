@@ -54,3 +54,13 @@ build_test/
 _startapp.bat
 DEVELOPMENT_PLAN.md.old_2026
 yandex_proxy.py
+
+# --- token hygiene: scratch/temp, not for commit ---
+_test_*.java
+_test_*.class
+_analyze_*.java
+_analyze_*.class
+build_test/
+*.tmp
+*.log
+
