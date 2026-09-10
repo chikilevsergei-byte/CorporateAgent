@@ -27,6 +27,13 @@
 ## Тесты
 - `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер, охранники, пресеты, пути, ProjectManager).
 
+## Рефакторинг (уменьшение стоимости контекста)
+- **perf(tokens)** `Agent.trimHistory` учитывает `systemPrompt` и `tool_calls`; `ToolExecutor.formatResult` ограничен 10 строками.
+- **refactor(ui)** `Ui.java` → `UiTheme` (палитра/шрифты/радиусы/`RoundedBorder`) + `Ui` (стилизация), `Ui extends UiTheme`. `Ui.java` 22 КБ → 12 КБ.
+- **refactor(settings)** `SettingsDialog` → `SettingsPanelModel` + `SettingsPanelInterface`. `SettingsDialog.java` 28 КБ → 10 КБ.
+- **refactor(agent)** Построение контекста БД вынесено в `DbContextBuilder`. `Agent.java` 38 КБ → 34 КБ.
+- Все рефакторы проверены `javac` (exit 0) + `SmokeCoreTest` (59/59 OK).
+
 ## История git (13 коммитов)
 - `0c70388` docs: C1.1 + C2.1
 - `4730683` assets: шаблоны Супер/Группа/Гипер Ленты
