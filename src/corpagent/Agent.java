@@ -67,37 +67,48 @@ public class Agent {
     private static final double HISTORY_TOKEN_BUDGET = 20000.0;
     private static final double CHARS_PER_TOKEN = 3.5;
 
-    /**
+        /**
      * Обрезает историю, оставляя лишь новейшие сообщения в рамках
      * {@link #HISTORY_TOKEN_BUDGET}. Последнее сообщение всегда сохраняется.
      * В начало обрезанного списка добавляется заметка о потере раннего контекста.
      * Исходный список не изменяется.
+     *
+     * @param history      история сообщений
+     * @param systemPrompt системный промпт: его объём вычитается из бюджета,
+     *                     чтобы суммарный контекст не превышал границу
      */
-    private static List<Map<String, Object>> trimHistory(List<Map<String, Object>> history) {
+    private static List<Map<String, Object>> trimHistory(List<Map<String, Object>> history,
+                                                         String systemPrompt) {
         if (history == null || history.isEmpty()) {
             return history;
+        }
+        // Бюджет на саму историю = общий бюджет минус стоимость системного промпта.
+        double budget = HISTORY_TOKEN_BUDGET;
+        if (systemPrompt != null && !systemPrompt.isEmpty()) {
+            budget -= systemPrompt.length() / CHARS_PER_TOKEN;
+        }
+        if (budget <= 0) {
+            budget = 0;
         }
         // Идём с конца (новейшие) и копим «токены» до исчерпания бюджета.
         double acc = 0.0;
         int keepFrom = history.size(); // индекс первого сохраняемого сообщения
         for (int i = history.size() - 1; i >= 0; i--) {
             Map<String, Object> m = history.get(i);
-            String role = Json.str(m, "role", "");
             Object contentObj = m.get("content");
             if (contentObj == null) {
                 contentObj = m.get("text");
             }
-            double weight;
-            if ("tool".equals(role)) {
-                // Результаты вызовов инструментов почти не режем — важны для цепи вызовов.
-                weight = 250.0;
-            } else {
-                String text = contentObj == null ? "" : String.valueOf(contentObj);
-                weight = text.length() / CHARS_PER_TOKEN;
+            String text = contentObj == null ? "" : String.valueOf(contentObj);
+            double weight = text.length() / CHARS_PER_TOKEN;
+            // Учитываем и полезную нагрузку tool_calls (аргументы инструментов).
+            Object toolCalls = m.get("tool_calls");
+            if (toolCalls != null) {
+                weight += String.valueOf(toolCalls).length() / CHARS_PER_TOKEN;
             }
             double next = acc + weight;
             // Последнее сообщение сохраняем всегда, даже если оно больше бюджета.
-            if (next > HISTORY_TOKEN_BUDGET && i < history.size() - 1) {
+            if (next > budget && i < history.size() - 1) {
                 break;
             }
             acc = next;
@@ -278,7 +289,7 @@ public class Agent {
 
                 // Не отправляем всю историю целиком: ограничиваем объём контекста
                 // новейшими сообщениями (старые отбрасываются по бюджету токенов).
-                historyWithContext = trimHistory(historyWithContext);
+                historyWithContext = trimHistory(historyWithContext, systemPrompt);
 
                                 String response;
                 // Зафиксировали расход до запроса, чтобы показать затраты именно этого ответа.

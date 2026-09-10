@@ -444,15 +444,21 @@ public class ToolExecutor {
         return t.length() > 200 ? t.substring(0, 200) + "…" : t;
     }
 
-    /** Форматирует результат запроса в компактный текст для модели. */
+        /** Форматирует результат запроса в компактный текст для модели.
+     *  Показываем не более {@link #MAX_ROWS_SHOWN} строк — результаты уходят
+     *  в контекст LLM на каждой итерации function calling, поэтому объём держим
+     *  минимальным (модель может запросить агрегат/конкретные строки при нужде). */
+    private static final int MAX_ROWS_SHOWN = 10;
+
     private static String formatResult(SqliteHelper.QueryResult qr) {
         StringBuilder sb = new StringBuilder();
         if (!qr.columns.isEmpty()) {
             sb.append("Колонки: ").append(String.join(", ", qr.columns)).append("\n");
             int shown = 0;
             for (List<Object> row : qr.rows) {
-                if (shown >= 50) {
-                    sb.append("... (показано 50 из ").append(qr.rows.size()).append(" строк)\n");
+                if (shown >= MAX_ROWS_SHOWN) {
+                    sb.append("... (показано ").append(MAX_ROWS_SHOWN)
+                      .append(" из ").append(qr.rows.size()).append(" строк)\n");
                     break;
                 }
                 sb.append("  ").append(row).append("\n");
