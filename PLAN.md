@@ -19,7 +19,9 @@
 ## 🟠 P2 — надёжность БД и доменные сценарии
 - [x] **C1.1 (остаток)** Интенты `UPDATE_DB` / `QUESTION_DB` / `PROTOCOL` / `STATUS` + приоритеты в `IntentRouter`
       (`isUpdateDbRequest` / `isQuestionDbRequest` / `isProtocolRequest` / `isStatusRequest`, `hasDbReference`).
-- [ ] **C3.2** Парсер протокола встречи → `meetings`/`tasks` (инструмент `extract_protocol`).
+- [x] **C3.2** Парсер протокола встречи → `meetings`/`meeting_decisions`/`tasks`:
+      `ProtocolExtractor` (`buildExtractionPrompt` / `buildNoDbContextHint` / `parseExtraction`),
+      ветка интента `PROTOCOL` в `Agent.processTask` (через общий путь `runConversation` + контур `db_execute`).
 - [ ] **C3.3** Отчёт «сделано / осталось / фокус» (SQL-агрегация по `tasks`).
 - [ ] **C2.2** Excel по шаблону: `createExcel(data, templateFile)` (в `Шаблоны/` есть «Паспорт проекта», «Реестр рисков»).
 

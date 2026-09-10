@@ -11,6 +11,7 @@ import corpagent.tools.ToolRegistry;
 import corpagent.util.Config;
 import corpagent.util.IntentRouter;
 import corpagent.util.Json;
+import corpagent.util.ProtocolExtractor;
 import corpagent.util.TokenBudget;
 import corpagent.util.Utils;
 
@@ -269,94 +270,128 @@ public class Agent {
                     result.response = schema;
                     return result;
                 }
-                result.response = "✅ Схема БД:\n\n```sql\n" + schema + "\n```";
+                                result.response = "✅ Схема БД:\n\n```sql\n" + schema + "\n```";
                 return result;
+            } else if (intent == IntentRouter.Intent.PROTOCOL) {
+                // C3.2: разбор протокола встречи в meetings/meeting_decisions/tasks.
+                // При активной БД — через управляемый контур db_query/db_execute (запись
+                // подтверждается в UI). Без активной БД — только разбор текстом + SQL-скрипт.
+                String pid = currentProjectId(dbContext);
+                systemPrompt += "\n\n" + ProtocolExtractor.buildExtractionPrompt(fullMessage, pid);
+                if (dbPath == null || dbPath.trim().isEmpty() || !Utils.exists(dbPath) || dbName == null) {
+                    systemPrompt += "\n\n" + ProtocolExtractor.buildNoDbContextHint();
+                }
+                                // Дальше — общий путь чата/инструментов (единая точка для БД + tool-контура).
+                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
+                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
             } else {
-                List<Map<String, Object>> historyWithContext = new ArrayList<Map<String, Object>>(history);
-                if (dbContext != null && !dbContext.isEmpty()) {
-                    String analysisInstruction = fullMessage
-                            + "\n\nИНСТРУКЦИЯ: \n1. Изучите предоставленную структуру базы данных и примеры данных.\n"
-                            + "2. Если пользователь просит изменить данные — сгенерируйте SQL-запросы в формате ```sql ... ```\n"
-                            + "3. Эти запросы будут автоматически выполнены в базе данных.\n"
-                            + "4. После выполнения запросов — подтвердите изменения и покажите обновленные данные.";
-                    Map<String, Object> userMsg = Json.newObject();
-                    userMsg.put("role", "user");
-                    userMsg.put("text", analysisInstruction);
-                    historyWithContext.add(userMsg);
-                } else {
-                    Map<String, Object> userMsg = Json.newObject();
-                    userMsg.put("role", "user");
-                    userMsg.put("text", fullMessage);
-                    historyWithContext.add(userMsg);
-                }
-
-                // Не отправляем всю историю целиком: ограничиваем объём контекста
-                // новейшими сообщениями (старые отбрасываются по бюджету токенов).
-                historyWithContext = trimHistory(historyWithContext, systemPrompt);
-
-                                String response;
-                // Зафиксировали расход до запроса, чтобы показать затраты именно этого ответа.
-                long preTokens = TokenBudget.tokensToday();
-                // Function calling активен при выбранной БД или включённых инструментах.
-                // Активная БД дополнительно подключает управляемые функции db_query/db_execute (A2):
-                // модель читает схему/данные и пишет точечно вместо хрупкого ```sql```-парсинга.
-                boolean dbPathOk = dbPath != null && !dbPath.trim().isEmpty() && Utils.exists(dbPath);
-                boolean dbActiveTool = dbPathOk && dbName != null;
-                boolean userToolsOn = toolsContext != null && !toolsContext.isEmpty()
-                        && !toolRegistry.buildToolsArray().isEmpty();
-                boolean toolsActive = dbActiveTool || userToolsOn;
-                if (toolsActive) {
-                    toolExecutor.setActiveDatabase(dbPath, dbName);
-                    toolExecutor.resetExecutedTools();
-                    List<Object> tools = new ArrayList<Object>();
-                    if (userToolsOn) {
-                        tools.addAll(toolRegistry.buildToolsArray());
-                    }
-                    if (dbActiveTool) {
-                        tools.addAll(toolExecutor.systemDbTools());
-                    }
-                    response = llm.callWithTools(historyWithContext, systemPrompt, tools,
-                            new DeepSeekClient.ToolCallHandler() {
-                                @Override
-                                public String execute(String name, Map<String, Object> arguments) {
-                                    if ("db_query".equals(name) || "db_execute".equals(name)) {
-                                        toolExecutor.recordExecuted(name);
-                                        return toolExecutor.executeBuiltinSql(name, arguments);
-                                    }
-                                    return toolExecutor.execute(name, arguments);
-                                }
-                            });
-                    // Запись уже могла быть выполнена управляемой функцией db_execute,
-                    // поэтому повторный авто-парсинг ```sql``` из текста ответа отключаем.
-                    autoUpdateDb = false;
-                } else {
-                    response = llm.call(historyWithContext, systemPrompt);
-                }
-                                result.response = response;
-
-                // Затраты токенов именно этого ответа (показ в чате + сводный расход).
-                long spent = TokenBudget.tokensToday() - preTokens;
-                if (spent > 0) {
-                    Map<String, Object> u = Json.newObject();
-                    u.put("kind", "token");
-                    u.put("icon", "⚡");
-                    u.put("name", TokenBudget.formatTokens(spent)
-                            + " · всего " + TokenBudget.formatMoney(TokenBudget.costTodayUsd()));
-                    result.usage.add(u);
-                }
-
-                // Визуализация использования: какие БД/навыки/инструменты были задействованы.
-                collectUsage(result, dbName, skillsContext, toolsContext);
-
-                if (dbPath != null && dbName != null && autoUpdateDb) {
-                    result.dbUpdates = dbManager.autoExecuteSqlUpdates(dbPath, dbName, response, message);
-                }
-                return result;
+                // Свободный диалог / анализ (CHAT): общий путь с контекстом БД и инструментами.
+                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
+                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
             }
         } catch (Exception e) {
             result.response = "❌ Ошибка: " + e.getMessage();
             return result;
         }
+    }
+
+    /**
+     * Общий путь диалога: формирует сообщение с контекстом БД, обрезает историю и вызывает
+     * LLM — с function calling (когда активна БД и/или включены инструменты) либо без него.
+     * Используется ветками CHAT и PROTOCOL, чтобы не дублировать tool-контур (C3.2).
+     */
+    private TaskResult runConversation(TaskResult result, List<Map<String, Object>> history,
+            String fullMessage, String systemPrompt, String dbContext, String skillsContext,
+            String toolsContext, String dbPath, String dbName, boolean autoUpdateDb) {
+        List<Map<String, Object>> historyWithContext = new ArrayList<Map<String, Object>>(history);
+        if (dbContext != null && !dbContext.isEmpty()) {
+            String analysisInstruction = fullMessage
+                    + "\n\nИНСТРУКЦИЯ: \n1. Изучите предоставленную структуру базы данных и примеры данных.\n"
+                    + "2. Если пользователь просит изменить данные — сгенерируйте SQL-запросы в формате ```sql ... ```\n"
+                    + "3. Эти запросы будут автоматически выполнены в базе данных.\n"
+                    + "4. После выполнения запросов — подтвердите изменения и покажите обновленные данные.";
+            Map<String, Object> userMsg = Json.newObject();
+            userMsg.put("role", "user");
+            userMsg.put("text", analysisInstruction);
+            historyWithContext.add(userMsg);
+        } else {
+            Map<String, Object> userMsg = Json.newObject();
+            userMsg.put("role", "user");
+            userMsg.put("text", fullMessage);
+            historyWithContext.add(userMsg);
+        }
+
+        // Не отправляем всю историю целиком: ограничиваем объём контекста
+        // новейшими сообщениями (старые отбрасываются по бюджету токенов).
+        historyWithContext = trimHistory(historyWithContext, systemPrompt);
+
+        String response;
+        // Зафиксировали расход до запроса, чтобы показать затраты именно этого ответа.
+        long preTokens = TokenBudget.tokensToday();
+        // Function calling активен при выбранной БД или включённых инструментах.
+        // Активная БД дополнительно подключает управляемые функции db_query/db_execute (A2):
+        // модель читает схему/данные и пишет точечно вместо хрупкого ```sql```-парсинга.
+        boolean dbPathOk = dbPath != null && !dbPath.trim().isEmpty() && Utils.exists(dbPath);
+        boolean dbActiveTool = dbPathOk && dbName != null;
+        boolean userToolsOn = toolsContext != null && !toolsContext.isEmpty()
+                && !toolRegistry.buildToolsArray().isEmpty();
+        boolean toolsActive = dbActiveTool || userToolsOn;
+        if (toolsActive) {
+            toolExecutor.setActiveDatabase(dbPath, dbName);
+            toolExecutor.resetExecutedTools();
+            List<Object> tools = new ArrayList<Object>();
+            if (userToolsOn) {
+                tools.addAll(toolRegistry.buildToolsArray());
+            }
+            if (dbActiveTool) {
+                tools.addAll(toolExecutor.systemDbTools());
+            }
+            response = llm.callWithTools(historyWithContext, systemPrompt, tools,
+                    new DeepSeekClient.ToolCallHandler() {
+                        @Override
+                        public String execute(String name, Map<String, Object> arguments) {
+                            if ("db_query".equals(name) || "db_execute".equals(name)) {
+                                toolExecutor.recordExecuted(name);
+                                return toolExecutor.executeBuiltinSql(name, arguments);
+                            }
+                            return toolExecutor.execute(name, arguments);
+                        }
+                    });
+            // Запись уже могла быть выполнена управляемой функцией db_execute,
+            // поэтому повторный авто-парсинг ```sql``` из текста ответа отключаем.
+            autoUpdateDb = false;
+        } else {
+            response = llm.call(historyWithContext, systemPrompt);
+        }
+        result.response = response;
+
+        // Затраты токенов именно этого ответа (показ в чате + сводный расход).
+        long spent = TokenBudget.tokensToday() - preTokens;
+        if (spent > 0) {
+            Map<String, Object> u = Json.newObject();
+            u.put("kind", "token");
+            u.put("icon", "⚡");
+            u.put("name", TokenBudget.formatTokens(spent)
+                    + " · всего " + TokenBudget.formatMoney(TokenBudget.costTodayUsd()));
+            result.usage.add(u);
+        }
+
+        // Визуализация использования: какие БД/навыки/инструменты были задействованы.
+        collectUsage(result, dbName, skillsContext, toolsContext);
+
+        if (dbPath != null && dbName != null && autoUpdateDb) {
+            result.dbUpdates = dbManager.autoExecuteSqlUpdates(dbPath, dbName, response, fullMessage);
+        }
+        return result;
+    }
+
+    /**
+     * C3.2: пытается определить идентификатор проекта (для полей project_id при записи
+     * протокола) из контекста БД. Пока контекст БД не содержит id проекта напрямую,
+     * возвращает null — функция-заглушка с заделом на будущее расширение.
+     */
+    private static String currentProjectId(String dbContext) {
+        return null;
     }
 
     /**

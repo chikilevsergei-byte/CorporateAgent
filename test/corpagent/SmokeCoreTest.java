@@ -41,6 +41,7 @@ public class SmokeCoreTest {
         testApplyProjectDefaults();
         testCreateProjectWithExistingDb();
         testUpdateProjectDbHelpers();
+        testProtocolExtractor();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -563,6 +564,72 @@ public class SmokeCoreTest {
                     "extractSqlBlock: без ```sql``` берёт текст до секции конфликтов");
         } catch (Exception e) {
             check(false, "testUpdateProjectDbHelpers: " + e);
+        }
+    }
+
+    // 15) C3.2: разбор протокола встречи. Проверяется извлечение полей из текста-ответа
+    //     модели и построение инструкции для LLM (без обращения к сети/БД).
+    private static void testProtocolExtractor() {
+        try {
+            Class<?> pe = Class.forName("corpagent.util.ProtocolExtractor");
+
+            // Инструкция для LLM упоминает доменные таблицы и проект.
+            java.lang.reflect.Method buildPrompt = pe.getDeclaredMethod(
+                    "buildExtractionPrompt", String.class, String.class);
+            buildPrompt.setAccessible(true);
+            String prompt = (String) buildPrompt.invoke(null, "обсуждали риски проекта", "42");
+            check(prompt.contains("meetings") && prompt.contains("meeting_decisions")
+                            && prompt.contains("tasks"),
+                    "buildExtractionPrompt упоминает meetings/meeting_decisions/tasks");
+            check(prompt.contains("project_id=42"),
+                    "buildExtractionPrompt подставляет project_id");
+            java.lang.reflect.Method noDbHint = pe.getDeclaredMethod("buildNoDbContextHint");
+            String hint = (String) noDbHint.invoke(null);
+            check(hint != null && hint.contains("БД"),
+                    "buildNoDbContextHint содержит подсказку про БД");
+
+            // Разбор структурированного ответа модели.
+            java.lang.reflect.Method parse = pe.getDeclaredMethod("parseExtraction", String.class);
+            parse.setAccessible(true);
+            String modelText = "МЕТАДАННЫЕ ВСТРЕЧИ\n"
+                    + "Тема: Синк по проекту\n"
+                    + "Дата: 2026-02-15\n"
+                    + "Участники: Иванов, Петров\n"
+                    + "Резюме: обсудили план\n"
+                    + "\nРЕШЕНИЯ\n"
+                    + "- Запустить этап 2\n"
+                    + "- Утвердить бюджет\n"
+                    + "\nПОРУЧЕНИЯ\n"
+                    + "- Иванов: подготовить план до 2026-02-20\n"
+                    + "- Петров: собрать риски\n";
+            java.util.Map<String, Object> parsed = castMap(parse.invoke(null, modelText));
+            check("Синк по проекту".equals(parsed.get("meeting_title")),
+                    "parseExtraction: тема встречи");
+            check("2026-02-15".equals(parsed.get("meeting_date")),
+                    "parseExtraction: дата встречи");
+            check("Иванов, Петров".equals(parsed.get("participants")),
+                    "parseExtraction: участники");
+            check("обсудили план".equals(parsed.get("summary")),
+                    "parseExtraction: резюме");
+
+            java.lang.reflect.Method cntD = pe.getDeclaredMethod("countDecisions", java.util.Map.class);
+            cntD.setAccessible(true);
+            java.lang.reflect.Method cntA = pe.getDeclaredMethod("countAssignments", java.util.Map.class);
+            cntA.setAccessible(true);
+            check(((Integer) cntD.invoke(null, parsed)) == 2,
+                    "parseExtraction: 2 решения (получено " + cntD.invoke(null, parsed) + ")");
+            check(((Integer) cntA.invoke(null, parsed)) == 2,
+                    "parseExtraction: 2 поручения (получено " + cntA.invoke(null, parsed) + ")");
+
+            // Пустой/некорректный ввод не должен падать.
+            java.util.Map<String, Object> empty = castMap(parse.invoke(null, (Object) null));
+            check(empty != null && Integer.valueOf(0).equals(cntD.invoke(null, empty)),
+                    "parseExtraction: null → пустая структура без падений");
+            java.util.Map<String, Object> junk = castMap(parse.invoke(null, "просто текст без структуры"));
+            check(Integer.valueOf(0).equals(cntA.invoke(null, junk)),
+                    "parseExtraction: свободный текст → 0 поручений");
+        } catch (Exception e) {
+            check(false, "testProtocolExtractor: " + e);
         }
     }
 

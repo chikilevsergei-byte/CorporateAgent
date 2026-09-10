@@ -20,6 +20,7 @@
 - **R-P1.7** Резервное копирование (`BackupManager`, ZIP в `backups/`, восстановление).
 - **Релиз-блокеры пресетов:** упаковка ресурсов в `build.bat` (копирование `presets/**` в classpath), корректный резолв Windows-пути `.db` (`PresetLoader.resolveDbPath`), инжект `code` навыков в системный промпт (`ChatView`).
 - **C1.1 (каркас + остаток)** `IntentRouter`: CHAT/PRESENTATION/EXCEL/DATABASE + `isCreateDbRequest`, далее добавлены `UPDATE_DB`/`QUESTION_DB`/`PROTOCOL`/`STATUS` (`isUpdateDbRequest`, `isQuestionDbRequest`, `isProtocolRequest`, `isStatusRequest`, `hasDbReference`) с расстановкой приоритетов в `detectIf`.
+- **C3.2** Разбор протокола встречи → `meetings`/`meeting_decisions`/`tasks`: `ProtocolExtractor` (инструкция ИИ, разбор ответа, подсказка без БД); ветка интента `PROTOCOL` в `Agent.processTask`. Общий путь диалога вынесен в `Agent.runConversation(...)` (переиспользуется CHAT и PROTOCOL, единый контур `db_query`/`db_execute` с подтверждением).
 - **C1.2 (базово)** Подтверждение DML (`WriteConfirmation`, `confirm_db_write`, диалог в `ChatView`).
 - **C2.1** PPTX по корп. шаблону Супер Ленты (`FileCreator` + `Шаблоны/*.pptx`).
 - **R-P1.5 (базово)** Раздельная работа чатов: чипы persist в записи чата.
@@ -32,7 +33,7 @@
 - **R-P1.9.6** «Обновить БД проекта» (`UpdateProjectDbDialog`): источник — другая БД или файлы; `Agent.generateDbUpsertPlan(...)` строит план upsert (INSERT/UPDATE) и секцию `###КОНФЛИКТЫ###`; пользователь решает про удаление отсутствующих записей; запись через `DatabaseManager.autoExecuteSqlUpdates`.
 
 ## Тесты
-- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер с новыми интентами, охранники, пресеты, пути, ProjectManager, перенос чата в проект, проект на существующей БД, план синхронизации БД). **93/93 OK**.
+- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер с новыми интентами, охранники, пресеты, пути, ProjectManager, перенос чата в проект, проект на существующей БД, план синхронизации БД, разбор протокола встречи). **104/104 OK**.
 
 ## Рефакторинг (уменьшение стоимости контекста)
 - **perf(tokens)** `Agent.trimHistory` учитывает `systemPrompt` и `tool_calls`; `ToolExecutor.formatResult` ограничен 10 строками.
