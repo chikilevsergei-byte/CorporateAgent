@@ -171,6 +171,55 @@ public class SmokeCoreTest {
                 "нейтральное упоминание без глагола создания → не DATABASE");
         check(IntentRouter.detect("что нового в списке задач?") == IntentRouter.Intent.CHAT,
                 "свободный вопрос → CHAT");
+
+        // C1.1 (остаток): новые интенты update_db / question_db / protocol / status.
+        // update_db: глагол записи + ссылка на БД.
+        check(IntentRouter.detect("обнови задачу в БД") == IntentRouter.Intent.UPDATE_DB,
+                "'обнови задачу в БД' → UPDATE_DB");
+        check(IntentRouter.detect("добавь нового участника в базу данных проекта")
+                        == IntentRouter.Intent.UPDATE_DB,
+                "'добавь … в базу данных …' → UPDATE_DB");
+        check(IntentRouter.detect("поставь статус done задаче 5 в БД") == IntentRouter.Intent.UPDATE_DB,
+                "'поставь … в БД' → UPDATE_DB");
+        // update_db не должен ложно срабатывать на создание БД.
+        check(IntentRouter.detect("создай базу данных рисков") == IntentRouter.Intent.DATABASE,
+                "создание БД важнее update_db");
+
+        // question_db: вопрос + ссылка на БД.
+        check(IntentRouter.detect("какие таблицы в бд?") == IntentRouter.Intent.QUESTION_DB,
+                "'какие таблицы в бд?' → QUESTION_DB");
+        check(IntentRouter.detect("покажи сделки из базы данных") == IntentRouter.Intent.QUESTION_DB,
+                "'покажи … из базы данных' → QUESTION_DB");
+        check(IntentRouter.detect("сколько задач в БД проекта") == IntentRouter.Intent.QUESTION_DB,
+                "'сколько … в БД' → QUESTION_DB");
+        // Вопрос без ссылки на БД остаётся CHAT.
+        check(IntentRouter.detect("какие риски у проекта?") == IntentRouter.Intent.CHAT,
+                "вопрос без ссылки на БД → CHAT");
+
+        // protocol: разбор протокола встречи.
+        check(IntentRouter.detect("разбери протокол встречи") == IntentRouter.Intent.PROTOCOL,
+                "'разбери протокол встречи' → PROTOCOL");
+        check(IntentRouter.detect("вытяни поручения из встречи") == IntentRouter.Intent.PROTOCOL,
+                "'вытяни поручения' → PROTOCOL");
+        check(IntentRouter.detect("обработай встречу и занеси решения") == IntentRouter.Intent.PROTOCOL,
+                "'обработай встречу' → PROTOCOL");
+
+        // status: статус-отчёт «сделано / осталось / фокус».
+        check(IntentRouter.detect("отчёт о статусе проекта") == IntentRouter.Intent.STATUS,
+                "'отчёт о статусе' → STATUS");
+        check(IntentRouter.detect("что сделано и что осталось по проекту") == IntentRouter.Intent.STATUS,
+                "'сделано и осталось' → STATUS");
+        check(IntentRouter.detect("на чём фокус проекта") == IntentRouter.Intent.STATUS,
+                "'на чём фокус' → STATUS");
+
+        // Приоритеты: презентация/Excel важнее протокола/статуса.
+        check(IntentRouter.detect("сделай презентацию статуса проекта") == IntentRouter.Intent.PRESENTATION,
+                "'презентация статуса' → PRESENTATION (не STATUS)");
+        check(IntentRouter.detect("выгрузи таблицу статуса в excel") == IntentRouter.Intent.EXCEL,
+                "'таблицу статуса в excel' → EXCEL (не STATUS)");
+        // Обычная просьба о таблице без БД/статуса остаётся EXCEL.
+        check(IntentRouter.detect("сделай таблицу работ") == IntentRouter.Intent.EXCEL,
+                "'таблицу работ' → EXCEL");
     }
 
     // 7) Резолвинг относительного пути пресет-БД (R-P1.3) не зависит от File.separator.

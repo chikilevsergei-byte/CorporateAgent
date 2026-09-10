@@ -17,7 +17,8 @@
       вопрос пользователю по конфликтам (удаление отсутствующих записей), запись через `DatabaseManager.autoExecuteSqlUpdates`.
 
 ## 🟠 P2 — надёжность БД и доменные сценарии
-- [ ] **C1.1 (остаток)** Интенты `update_db` / `question_db` / `protocol` / `status` + приоритеты в `IntentRouter`.
+- [x] **C1.1 (остаток)** Интенты `UPDATE_DB` / `QUESTION_DB` / `PROTOCOL` / `STATUS` + приоритеты в `IntentRouter`
+      (`isUpdateDbRequest` / `isQuestionDbRequest` / `isProtocolRequest` / `isStatusRequest`, `hasDbReference`).
 - [ ] **C3.2** Парсер протокола встречи → `meetings`/`tasks` (инструмент `extract_protocol`).
 - [ ] **C3.3** Отчёт «сделано / осталось / фокус» (SQL-агрегация по `tasks`).
 - [ ] **C2.2** Excel по шаблону: `createExcel(data, templateFile)` (в `Шаблоны/` есть «Паспорт проекта», «Реестр рисков»).
