@@ -46,6 +46,13 @@ public class CreateProjectDialog extends JDialog {
     private final JLabel statusLabel = new JLabel(" ");
     private final JButton createBtn = new JButton("Создать проект");
 
+    // R-P1.9.5: источник БД проекта — новая (по доменной схеме) или существующая из хранилища.
+    private final javax.swing.JRadioButton newDbRadio = new javax.swing.JRadioButton("Новая БД проекта (доменная схема)");
+    private final javax.swing.JRadioButton existingDbRadio = new javax.swing.JRadioButton("Существующая БД из списка");
+    private final javax.swing.JComboBox<String> existingDbCombo = new javax.swing.JComboBox<String>();
+    private JPanel dbNameRow;
+    private JPanel existingDbRow;
+
     private boolean created = false;
     private String createdProjectId;
 
@@ -82,8 +89,43 @@ public class CreateProjectDialog extends JDialog {
         root.add(nameField);
         root.add(Box.createVerticalStrut(10));
 
-        // Техническое имя БД
-        root.add(fieldLabel("Имя БД проекта (латиница/цифры/_-)"));
+        // R-P1.9.5: выбор источника БД проекта.
+        root.add(fieldLabel("Источник БД проекта"));
+        javax.swing.ButtonGroup srcGroup = new javax.swing.ButtonGroup();
+        newDbRadio.setSelected(true);
+        newDbRadio.setOpaque(false);
+        existingDbRadio.setOpaque(false);
+        newDbRadio.setFont(Ui.FONT_SMALL);
+        existingDbRadio.setFont(Ui.FONT_SMALL);
+        newDbRadio.setAlignmentX(Component.LEFT_ALIGNMENT);
+        existingDbRadio.setAlignmentX(Component.LEFT_ALIGNMENT);
+        srcGroup.add(newDbRadio);
+        srcGroup.add(existingDbRadio);
+        root.add(newDbRadio);
+        root.add(Box.createVerticalStrut(4));
+        root.add(existingDbRadio);
+        root.add(Box.createVerticalStrut(6));
+
+        // Ряд «Существующая БД» — комбобокс зарегистрированных БД (скрыт при выборе «новая»).
+        existingDbRow = new JPanel();
+        existingDbRow.setLayout(new BoxLayout(existingDbRow, BoxLayout.X_AXIS));
+        existingDbRow.setOpaque(false);
+        existingDbRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        existingDbRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        existingDbCombo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        existingDbCombo.setFont(Ui.FONT_SMALL);
+        existingDbRow.add(existingDbCombo);
+        existingDbRow.setVisible(false);
+        root.add(existingDbRow);
+        root.add(Box.createVerticalStrut(10));
+
+        // Техническое имя БД — в отдельном ряду (скрывается при выборе существующей БД).
+        dbNameRow = new JPanel();
+        dbNameRow.setLayout(new BoxLayout(dbNameRow, BoxLayout.Y_AXIS));
+        dbNameRow.setOpaque(false);
+        dbNameRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        dbNameRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        dbNameRow.add(fieldLabel("Имя БД проекта (латиница/цифры/_-)"));
         dbField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         dbField.setAlignmentX(Component.LEFT_ALIGNMENT);
         // Как только пользователь сам правит имя БД — автоподстановка из имени проекта отключается.
@@ -106,7 +148,8 @@ public class CreateProjectDialog extends JDialog {
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
             }
         });
-        root.add(dbField);
+        dbNameRow.add(dbField);
+        root.add(dbNameRow);
         root.add(Box.createVerticalStrut(10));
 
         // Описание
@@ -198,9 +241,26 @@ public class CreateProjectDialog extends JDialog {
                 autofillDbName();
             }
         });
+
+        // R-P1.9.5: заполняем список существующих БД и переключаем видимость рядов.
+        for (String dbName : store.enabledDatabases()) {
+            existingDbCombo.addItem(dbName);
+        }
+        newDbRadio.addActionListener(e -> updateSourceRows());
+        existingDbRadio.addActionListener(e -> updateSourceRows());
+        updateSourceRows();
     }
 
     private boolean dbNameUserEdited = false;
+
+    /** R-P1.9.5: показывает ряд имени новой БД либо ряд выбора существующей БД. */
+    private void updateSourceRows() {
+        boolean useExisting = existingDbRadio.isSelected();
+        dbNameRow.setVisible(!useExisting);
+        existingDbRow.setVisible(useExisting);
+        revalidate();
+        repaint();
+    }
 
     private void autofillDbName() {
         if (dbNameUserEdited) {
@@ -220,33 +280,50 @@ public class CreateProjectDialog extends JDialog {
 
     private void createProject() {
         String name = nameField.getText().trim();
-        String db = dbField.getText().trim();
         if (name.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Введите название проекта.");
             return;
         }
-        String sanitized = db.isEmpty() ? ProjectManager.sanitizeDbName(name) : db;
-        if (sanitized == null || !Utils.isValidDbName(sanitized)) {
-            JOptionPane.showMessageDialog(this,
-                    "Некорректное имя БД проекта. Используйте латиницу, цифры, '_' или '-'.");
-            return;
-        }
-        if (store.getDatabase(sanitized) != null) {
-            JOptionPane.showMessageDialog(this,
-                    "БД проекта '" + sanitized + "' уже существует. Укажите другое имя.");
-            return;
-        }
+        final boolean useExisting = existingDbRadio.isSelected();
         final String fName = name;
-        final String fDb = sanitized;
         final String fDesc = descArea.getText().trim();
         final String fPrompt = promptArea.getText().trim();
+        final String fDb;
+        if (useExisting) {
+            Object sel = existingDbCombo.getSelectedItem();
+            if (sel == null) {
+                JOptionPane.showMessageDialog(this,
+                        "Нет зарегистрированных БД. Создайте БД или выберите «Новая БД проекта».");
+                return;
+            }
+            fDb = String.valueOf(sel);
+        } else {
+            String db = dbField.getText().trim();
+            String sanitized = db.isEmpty() ? ProjectManager.sanitizeDbName(name) : db;
+            if (sanitized == null || !Utils.isValidDbName(sanitized)) {
+                JOptionPane.showMessageDialog(this,
+                        "Некорректное имя БД проекта. Используйте латиницу, цифры, '_' или '-'.");
+                return;
+            }
+            if (store.getDatabase(sanitized) != null) {
+                JOptionPane.showMessageDialog(this,
+                        "БД проекта '" + sanitized + "' уже существует. Укажите другое имя.");
+                return;
+            }
+            fDb = sanitized;
+        }
 
         createBtn.setEnabled(false);
         statusLabel.setForeground(Ui.TEXT_GRAY);
-        statusLabel.setText("⏳ Создание БД проекта и чатов...");
+        statusLabel.setText(useExisting
+                ? "⏳ Создание проекта на существующей БД и чатов..."
+                : "⏳ Создание БД проекта и чатов...");
         new SwingWorker<ProjectManager.CreateProjectResult, Void>() {
             @Override
             protected ProjectManager.CreateProjectResult doInBackground() {
+                if (useExisting) {
+                    return ProjectManager.createProjectWithExistingDb(store, fName, fDesc, fPrompt, fDb);
+                }
                 return ProjectManager.createProject(store, frame.getDbManager(),
                         fName, fDesc, fPrompt, fDb);
             }

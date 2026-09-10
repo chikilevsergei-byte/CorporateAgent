@@ -288,6 +288,92 @@ public final class ProjectManager {
         return result;
     }
 
+    /**
+     * R-P1.9.5: создаёт проект, используя уже зарегистрированную (существующую) БД как БД
+     * проекта. Схема БД не создаётся — берётся текущий {@code .db}-файл из хранилища.
+     *
+     * @param store       хранилище
+     * @param name        отображаемое имя проекта
+     * @param description описание проекта
+     * @param systemPrompt системный промпт проекта
+     * @param existingDb  имя зарегистрированной БД (из {@link DataStore#getDatabase(String)})
+     * @return результат (успех/ошибки, идентификаторы проекта и чатов)
+     */
+    public static CreateProjectResult createProjectWithExistingDb(DataStore store,
+            String name, String description, String systemPrompt, String existingDb) {
+        CreateProjectResult result = new CreateProjectResult();
+        if (name == null || name.trim().isEmpty()) {
+            result.error = "Не задано имя проекта.";
+            return result;
+        }
+        if (existingDb == null || existingDb.trim().isEmpty() || store.getDatabase(existingDb) == null) {
+            result.error = "Выбранная БД проекта не найдена: " + existingDb;
+            return result;
+        }
+        String projName = name.trim();
+        String db = existingDb.trim();
+        result.projectDb = db;
+        result.projectId = createProjectRecordAndChats(store, projName, db, description, systemPrompt);
+        result.success = true;
+        return result;
+    }
+
+    /**
+     * Создаёт запись проекта и 7 авто-чатов (без создания схемы БД). Общая часть для
+     * «нового проекта» (после создания .db) и «проекта на существующей БД» (R-P1.9.5).
+     *
+     * @return идентификатор проекта
+     */
+    private static String createProjectRecordAndChats(DataStore store, String projName, String db,
+            String description, String systemPrompt) {
+        String projectId = "proj_" + Utils.timestamp() + "_" + Math.abs((projName + db).hashCode());
+        Map<String, Object> project = Json.newObject();
+        project.put("id", projectId);
+        project.put("name", projName);
+        project.put("description", description == null ? "" : description.trim());
+        project.put("system_prompt", systemPrompt == null ? "" : systemPrompt.trim());
+        project.put("db", db);
+        project.put("created", Utils.nowIso());
+        project.put("updated", Utils.nowIso());
+        project.put("chat_roles", roleTitles());
+        store.putProject(projectId, project);
+
+        List<String> lpgPresent = store.getDatabase(LPG_DB) != null
+                ? java.util.Collections.singletonList(LPG_DB)
+                : java.util.Collections.<String>emptyList();
+        for (ChatRole role : CHAT_ROLES) {
+            String chatId = "chat_" + Utils.timestamp() + "_" + Math.abs(role.title.hashCode());
+            Map<String, Object> chat = Json.newObject();
+            chat.put("title", role.title);
+            chat.put("icon", role.icon);
+            chat.put("created", Utils.nowIso());
+            chat.put("updated", Utils.nowIso());
+            chat.put("messages", Json.newArray());
+            chat.put("pinned", Boolean.FALSE);
+            chat.put("project", projectId);
+            chat.put("project_name", projName);
+            chat.put("project_db", db);
+            chat.put("role", role.title);
+            List<Object> dbs = new ArrayList<Object>();
+            dbs.add(db);
+            dbs.addAll(lpgPresent);
+            chat.put("selected_databases", dbs);
+            List<Object> skillsList = new ArrayList<Object>();
+            if (role.skill != null && !role.skill.isEmpty()) {
+                skillsList.add(role.skill);
+            }
+            chat.put("selected_skills", skillsList);
+            List<Object> toolsList = new ArrayList<Object>();
+            for (String t : role.tools) {
+                toolsList.add(t);
+            }
+            chat.put("selected_tools", toolsList);
+            store.putChat(chatId, chat);
+        }
+        store.saveAll();
+        return projectId;
+    }
+
     /** Возвращает упорядоченный список названий чатов-ролей проекта. */
     public static List<String> roleTitles() {
         List<String> titles = new ArrayList<String>();

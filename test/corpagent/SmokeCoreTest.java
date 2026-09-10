@@ -39,6 +39,7 @@ public class SmokeCoreTest {
         testProjectManager();
         testMethodologyChatDefaults();
         testApplyProjectDefaults();
+        testCreateProjectWithExistingDb();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -441,6 +442,33 @@ public class SmokeCoreTest {
     @SuppressWarnings("unchecked")
     private static java.util.Map<String, Object> castMap(Object o) {
         return (java.util.Map<String, Object>) o;
+    }
+
+    // 13) R-P1.9.5: проект на существующей БД. Проверяем безопасное поведение —
+    //     отсутствие имени проекта и/или несуществующей БД → success=false без исключений.
+    private static void testCreateProjectWithExistingDb() {
+        try {
+            Class<?> pm = Class.forName("corpagent.data.ProjectManager");
+            java.lang.reflect.Method m = pm.getDeclaredMethod("createProjectWithExistingDb",
+                    Class.forName("corpagent.data.DataStore"),
+                    String.class, String.class, String.class, String.class);
+            m.setAccessible(true);
+
+            // null-store → возвращается результат с ошибкой, но без падения.
+            Object r = m.invoke(null, null, "Проект", "", "", null);
+            java.lang.reflect.Field okF = r.getClass().getField("success");
+            java.lang.reflect.Field errF = r.getClass().getField("error");
+            check(Boolean.FALSE.equals(okF.get(r)),
+                    "createProjectWithExistingDb: пустая/несуществующая БД → success=false");
+            check(errF.get(r) != null,
+                    "createProjectWithExistingDb: заполнено сообщение об ошибке");
+
+            Object r2 = m.invoke(null, null, "  ", "", "", "any_db");
+            check(Boolean.FALSE.equals(okF.get(r2)),
+                    "createProjectWithExistingDb: пустое имя проекта → success=false");
+        } catch (Exception e) {
+            check(false, "testCreateProjectWithExistingDb: " + e);
+        }
     }
 
     @SuppressWarnings("unchecked")
