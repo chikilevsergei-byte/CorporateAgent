@@ -22,7 +22,9 @@
 - [x] **C3.2** Парсер протокола встречи → `meetings`/`meeting_decisions`/`tasks`:
       `ProtocolExtractor` (`buildExtractionPrompt` / `buildNoDbContextHint` / `parseExtraction`),
       ветка интента `PROTOCOL` в `Agent.processTask` (через общий путь `runConversation` + контур `db_execute`).
-- [ ] **C3.3** Отчёт «сделано / осталось / фокус» (SQL-агрегация по `tasks`).
+- [x] **C3.3** Отчёт «сделано / осталось / фокус» (SQL-агрегация по `tasks`):
+      `StatusReport` (`buildStatusPrompt` / `buildNoDbContextHint` / `parseCounts` / `formatSummary`),
+      ветка интента `STATUS` в `Agent.processTask` (сводка в чат через `runConversation`).
 - [ ] **C2.2** Excel по шаблону: `createExcel(data, templateFile)` (в `Шаблоны/` есть «Паспорт проекта», «Реестр рисков»).
 
 ## 🟠 P2 — политика / безопасность

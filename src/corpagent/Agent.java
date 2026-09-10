@@ -12,6 +12,7 @@ import corpagent.util.Config;
 import corpagent.util.IntentRouter;
 import corpagent.util.Json;
 import corpagent.util.ProtocolExtractor;
+import corpagent.util.StatusReport;
 import corpagent.util.TokenBudget;
 import corpagent.util.Utils;
 
@@ -282,12 +283,27 @@ public class Agent {
                     systemPrompt += "\n\n" + ProtocolExtractor.buildNoDbContextHint();
                 }
                                 // Дальше — общий путь чата/инструментов (единая точка для БД + tool-контура).
-                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
-                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
+                                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
+                                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
+            } else if (intent == IntentRouter.Intent.STATUS) {
+                                // C3.3: статус-отчёт «сделано / осталось / фокус» (агрегация tasks).
+                                String pid = currentProjectId(dbContext);
+                                systemPrompt += "\n\n" + StatusReport.buildStatusPrompt(pid);
+                                if (dbPath == null || dbPath.trim().isEmpty() || !Utils.exists(dbPath) || dbName == null) {
+                                    systemPrompt += "\n\n" + StatusReport.buildNoDbContextHint();
+                                }
+                                TaskResult sr = runConversation(result, history, fullMessage, systemPrompt, dbContext,
+                                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
+                                // Краткая сводка по распознанным числам (сделано/осталось/фокус) — в чат.
+                                String summary = StatusReport.formatSummary(StatusReport.parseCounts(sr.response));
+                                if (!summary.isEmpty()) {
+                                    sr.response = sr.response + "\n\n" + summary;
+                                }
+                                return sr;
             } else {
-                // Свободный диалог / анализ (CHAT): общий путь с контекстом БД и инструментами.
-                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
-                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
+                                // Свободный диалог / анализ (CHAT): общий путь с контекстом БД и инструментами.
+                                return runConversation(result, history, fullMessage, systemPrompt, dbContext,
+                                        skillsContext, toolsContext, dbPath, dbName, autoUpdateDb);
             }
         } catch (Exception e) {
             result.response = "❌ Ошибка: " + e.getMessage();

@@ -42,6 +42,7 @@ public class SmokeCoreTest {
         testCreateProjectWithExistingDb();
         testUpdateProjectDbHelpers();
         testProtocolExtractor();
+        testStatusReport();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -631,6 +632,64 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testProtocolExtractor: " + e);
         }
+    }
+
+    // 16) C3.3: статус-отчёт «сделано / осталось / фокус» по таблице tasks.
+    private static void testStatusReport() {
+        try {
+            Class<?> sr = Class.forName("corpagent.util.StatusReport");
+
+            java.lang.reflect.Method buildPrompt = sr.getDeclaredMethod("buildStatusPrompt", String.class);
+            buildPrompt.setAccessible(true);
+            String prompt = (String) buildPrompt.invoke(null, "7");
+            check(prompt.contains("tasks") && prompt.contains("project_id=7"),
+                    "buildStatusPrompt упоминает tasks и project_id");
+            check(prompt.contains("GROUP BY status"),
+                    "buildStatusPrompt предлагает агрегацию GROUP BY status");
+            check(prompt.toLowerCase().contains("фокус"),
+                    "buildStatusPrompt описывает блок «фокус»");
+
+            java.lang.reflect.Method noDb = sr.getDeclaredMethod("buildNoDbContextHint");
+            String hint = (String) noDb.invoke(null);
+            check(hint != null && hint.contains("БД"),
+                    "buildNoDbContextHint содержит подсказку про БД");
+
+            // Разбор итогового резюме.
+            java.lang.reflect.Method parse = sr.getDeclaredMethod("parseCounts", String.class);
+            parse.setAccessible(true);
+            java.util.Map<String, Integer> counts = castIntMap(parse.invoke(null,
+                    "Отчёт: Сделано 5, осталось 3, в фокусе 2 задачи."));
+            check(Integer.valueOf(5).equals(counts.get("done")), "parseCounts: сделано=5");
+            check(Integer.valueOf(3).equals(counts.get("left")), "parseCounts: осталось=3");
+            check(Integer.valueOf(2).equals(counts.get("focus")), "parseCounts: фокус=2");
+
+            // Разбор при обратном порядке слов.
+            java.util.Map<String, Integer> counts2 = castIntMap(parse.invoke(null,
+                    "В работе 4 задачи, выполнено 9."));
+            check(Integer.valueOf(9).equals(counts2.get("done")), "parseCounts: выполнено=9");
+            check(Integer.valueOf(4).equals(counts2.get("left")), "parseCounts: в работе=4");
+
+            // Нет чисел — показатели -1.
+            java.util.Map<String, Integer> none = castIntMap(parse.invoke(null, "пока без цифр"));
+            check(Integer.valueOf(-1).equals(none.get("done")), "parseCounts: без чисел → -1");
+
+            // Сводка.
+            java.lang.reflect.Method fmt = sr.getDeclaredMethod("formatSummary", java.util.Map.class);
+            fmt.setAccessible(true);
+            String summary = (String) fmt.invoke(null, counts);
+            check(summary.contains("сделано 5") && summary.contains("осталось 3")
+                            && summary.contains("в фокусе 2"),
+                    "formatSummary формирует сводку");
+            String empty = (String) fmt.invoke(null, none);
+            check(empty.isEmpty(), "formatSummary: без показателей → пустая строка");
+        } catch (Exception e) {
+            check(false, "testStatusReport: " + e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<String, Integer> castIntMap(Object o) {
+        return (java.util.Map<String, Integer>) o;
     }
 
     @SuppressWarnings("unchecked")
