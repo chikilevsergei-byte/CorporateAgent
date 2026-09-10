@@ -291,6 +291,40 @@ public class MainFrame extends JFrame {
         }
     }
 
+        /**
+     * R-P1.4: создаёт чат «Вопрос по методологии» — только на чтение указанной
+     * методологической БД ({@code db}). Дополнительные чипы (навыки/инструменты) не выбираются;
+     * пользователь может переопределить выбор вручную.
+     *
+     * @param db   имя методологической БД (например, «Методология LPG»)
+     * @param tag  короткая метка для заголовка чата (LPG / ИТ)
+     */
+    public void newMethodologyChat(String db, String tag) {
+        String chatId = "chat_" + Utils.timestamp() + "_" + Math.abs(db.hashCode());
+        Map<String, Object> chat = Json.newObject();
+        chat.put("title", "Вопрос по методологии: " + tag);
+        chat.put("icon", "📚");
+        chat.put("created", Utils.nowIso());
+        chat.put("updated", Utils.nowIso());
+        chat.put("messages", Json.newArray());
+        chat.put("pinned", Boolean.FALSE);
+        chat.put("methodology_readonly", Boolean.TRUE);
+        // Чат только на чтение методологической БД: единственный выбранный чип-БД.
+        java.util.List<Object> dbs = new java.util.ArrayList<Object>();
+        if (store.getDatabase(db) != null) {
+            dbs.add(db);
+        }
+        chat.put("selected_databases", dbs);
+        chat.put("selected_skills", Json.newArray());
+        chat.put("selected_tools", Json.newArray());
+        store.putChat(chatId, chat);
+        store.saveAll();
+        currentChatId = chatId;
+        viewingDb = null;
+        editingDb = null;
+        showChat();
+    }
+
     /** Создаёт новый чат и переходит к нему. */
     public void newChat() {
         String chatId = "chat_" + Utils.timestamp();

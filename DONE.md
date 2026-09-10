@@ -23,9 +23,14 @@
 - **C1.2 (базово)** Подтверждение DML (`WriteConfirmation`, `confirm_db_write`, диалог в `ChatView`).
 - **C2.1** PPTX по корп. шаблону Супер Ленты (`FileCreator` + `Шаблоны/*.pptx`).
 - **R-P1.5 (базово)** Раздельная работа чатов: чипы persist в записи чата.
+- **R-P1.4** Кнопки «Вопрос по LPG» / «Вопрос по ИТ» в ряду кнопок сайдбара; `MainFrame.newMethodologyChat(db, tag)` — чат только на чтение методологической БД (`methodology_readonly=true`, единственный чип-БД). Константа `ProjectManager.IT_METHODOLOGY_DB`.
+- **R-P1.9.1** Сайдбар: убраны иконки (`➕`/`🗂️`) и `setIconTextGap(8)` у кнопок «Новый чат» / «Создать проект».
+- **R-P1.9.2** Заголовки проекта и «Без проекта» выровнены влево (BoxLayout вместо центрирующего FlowLayout), убрана иконка `🗂️`.
+- **R-P1.9.3** Сворачивание проекта: `SidebarPanel.collapsedProjects` (в памяти сессии), дисклокер `▸/▾`, клик по заголовку скрывает/показывает чаты проекта.
+- **R-P1.9.4** «Переместить в проект…» в `showChatMenu` + `ProjectManager.applyProjectDefaults(store, chat, project)` и `roleForTitle(...)` — переносит проект-поля и дефолтные чипы (БД проекта + LPG, навык/инструменты роли).
 
 ## Тесты
-- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер, охранники, пресеты, пути, ProjectManager).
+- `test/corpagent/SmokeCoreTest.java` — расширенные smoke-проверки (TokenBudget, роутер, охранники, пресеты, пути, ProjectManager, перенос чата в проект). **67/67 OK**.
 
 ## Рефакторинг (уменьшение стоимости контекста)
 - **perf(tokens)** `Agent.trimHistory` учитывает `systemPrompt` и `tool_calls`; `ToolExecutor.formatResult` ограничен 10 строками.

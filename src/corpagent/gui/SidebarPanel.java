@@ -34,8 +34,11 @@ import java.util.Map;
  */
 public class SidebarPanel extends JPanel {
 
-        private final MainFrame frame;
+    private final MainFrame frame;
     private final JPanel chatListPanel = new ScrollablePanel();
+
+    /** R-P1.9.3: id свёрнутых проектов (в памяти сессии). */
+    private final java.util.Set<String> collapsedProjects = new java.util.HashSet<String>();
 
     public SidebarPanel(MainFrame frame) {
         this.frame = frame;
@@ -48,9 +51,8 @@ public class SidebarPanel extends JPanel {
         top.setBackground(Ui.SURFACE);
         top.setBorder(new EmptyBorder(16, 12, 12, 12));
 
-        // Верхний ряд кнопок: «Новый чат» и «Создать проект» (R-P0.2).
-        // Оба — одного размера, с одинаковыми отступами, отцентрованы относительно
-        // друг друга и расположены в один ряд.
+                // R-P1.9.1: ряд кнопок «Новый чат» / «Создать проект» — компактный текст без иконок
+        // и лишних отступов (setIcon/setIconTextGap убраны).
         JPanel topButtons = new JPanel(new java.awt.GridLayout(1, 2, 8, 0));
         topButtons.setBackground(Ui.SURFACE);
         topButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -60,8 +62,6 @@ public class SidebarPanel extends JPanel {
         Ui.stylePrimary(newChatBtn);
         newChatBtn.setForeground(Color.BLACK);
         newChatBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        newChatBtn.setIcon(Ui.iconImage("➕", 16));
-        newChatBtn.setIconTextGap(8);
         newChatBtn.addActionListener(e -> frame.newChat());
         topButtons.add(newChatBtn);
 
@@ -69,12 +69,34 @@ public class SidebarPanel extends JPanel {
         Ui.styleSecondary(newProjectBtn);
         newProjectBtn.setForeground(Color.BLACK);
         newProjectBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        newProjectBtn.setIcon(Ui.iconImage("🗂️", 16));
-        newProjectBtn.setIconTextGap(8);
         newProjectBtn.addActionListener(e -> frame.createProject());
         topButtons.add(newProjectBtn);
 
         top.add(topButtons);
+        top.add(Box.createVerticalStrut(8));
+
+        // R-P1.4: ряд кнопок «Вопрос по LPG» / «Вопрос по ИТ» — чаты только на чтение методологии.
+        JPanel methodButtons = new JPanel(new java.awt.GridLayout(1, 2, 8, 0));
+        methodButtons.setBackground(Ui.SURFACE);
+        methodButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
+        methodButtons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
+
+        JButton lpgBtn = new JButton("Вопрос по LPG");
+        Ui.styleSecondary(lpgBtn);
+        lpgBtn.setForeground(Color.BLACK);
+        lpgBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lpgBtn.addActionListener(e -> frame.newMethodologyChat(ProjectManager.LPG_DB, "LPG"));
+        methodButtons.add(lpgBtn);
+
+        JButton itBtn = new JButton("Вопрос по ИТ");
+        Ui.styleSecondary(itBtn);
+        itBtn.setForeground(Color.BLACK);
+        itBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        itBtn.addActionListener(e ->
+                frame.newMethodologyChat(ProjectManager.IT_METHODOLOGY_DB, "ИТ"));
+        methodButtons.add(itBtn);
+
+        top.add(methodButtons);
         top.add(Box.createVerticalStrut(16));
 
         // Заголовок «Чаты»
@@ -138,8 +160,12 @@ public class SidebarPanel extends JPanel {
                 if (shown >= 15) {
                     break;
                 }
-                chatListPanel.add(projectHeader(projectNames.get(g.getKey()), g.getKey(),
+                                chatListPanel.add(projectHeader(projectNames.get(g.getKey()), g.getKey(),
                         g.getValue().size()));
+                // R-P1.9.3: чаты свёрнутого проекта не показываются.
+                if (collapsedProjects.contains(g.getKey())) {
+                    continue;
+                }
                 for (Map.Entry<String, Map<String, Object>> e : g.getValue()) {
                     if (shown >= 15) {
                         break;
@@ -165,7 +191,7 @@ public class SidebarPanel extends JPanel {
         chatListPanel.repaint();
     }
 
-    /** Заголовок-«папка» проекта в списке чатов (R-P0.2). */
+        /** Заголовок-«папка» проекта в списке чатов (R-P0.2, R-P1.9.2/R-P1.9.3). */
     private JPanel projectHeader(String projectName, String projectId, int chatCount) {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Ui.SURFACE);
@@ -173,13 +199,29 @@ public class SidebarPanel extends JPanel {
         header.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         header.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+        // R-P1.9.2: выравнивание влево, без центрирующего FlowLayout и без иконки 🗂️.
+        JPanel left = new JPanel();
+        left.setLayout(new BoxLayout(left, BoxLayout.X_AXIS));
         left.setOpaque(false);
-        left.add(Ui.icon("🗂️", 14));
+        left.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        // R-P1.9.3: дисклокер сворачивания/разворачивания проекта.
+        boolean collapsed = collapsedProjects.contains(projectId);
+        JLabel dis = new JLabel(collapsed ? "▸" : "▾");
+        dis.setFont(Ui.FONT_SMALL_BOLD);
+        dis.setForeground(Ui.TEXT_MUTED);
+        left.add(dis);
+        left.add(Box.createHorizontalStrut(6));
         JLabel name = new JLabel(Utils.truncate(projectName, 18) + " · " + chatCount);
         name.setFont(Ui.FONT_SMALL_BOLD);
         name.setForeground(Ui.PRIMARY_DARK);
         left.add(name);
+        left.add(Box.createHorizontalGlue());
+        left.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                toggleProjectCollapsed(projectId);
+            }
+        });
         header.add(left, BorderLayout.CENTER);
 
         JButton menu = new JButton("...");
@@ -199,8 +241,10 @@ public class SidebarPanel extends JPanel {
         return header;
     }
 
-    private JPanel sectionLabel(String text) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        private JPanel sectionLabel(String text) {
+        // R-P1.9.2: выравнивание влево без центрирующего FlowLayout.
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
         row.setBackground(Ui.SURFACE);
         row.setBorder(new EmptyBorder(10, 4, 2, 4));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
@@ -209,7 +253,16 @@ public class SidebarPanel extends JPanel {
         l.setFont(Ui.FONT_SMALL_BOLD);
         l.setForeground(Ui.TEXT_MUTED);
         row.add(l);
+        row.add(Box.createHorizontalGlue());
         return row;
+    }
+
+    /** R-P1.9.3: сворачивает/разворачивает проект в сайдбаре и обновляет список. */
+    private void toggleProjectCollapsed(String projectId) {
+        if (!collapsedProjects.remove(projectId)) {
+            collapsedProjects.add(projectId);
+        }
+        refreshChats();
     }
 
     /** Меню проекта: удаление проекта вместе с его чатами (БД проекта остаётся). */
@@ -299,10 +352,10 @@ public class SidebarPanel extends JPanel {
         return row;
     }
 
-    private void showChatMenu(String chatId, String currentTitle) {
-        String[] options = {"Переименовать", "Удалить", "Отмена"};
+        private void showChatMenu(String chatId, String currentTitle) {
+        String[] options = {"Переименовать", "Переместить в проект…", "Удалить", "Отмена"};
         int choice = JOptionPane.showOptionDialog(this, "Чат: " + currentTitle, "Меню чата",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[2]);
+                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[3]);
         if (choice == 0) {
             String newName = JOptionPane.showInputDialog(this, "Новое имя чата:", currentTitle);
             if (newName != null && !newName.trim().isEmpty()) {
@@ -316,6 +369,9 @@ public class SidebarPanel extends JPanel {
                 }
             }
         } else if (choice == 1) {
+            // R-P1.9.4: перенос обычного чата в проект по правилам проекта.
+            moveChatToProject(chatId, currentTitle);
+        } else if (choice == 2) {
             int confirm = JOptionPane.showConfirmDialog(this, "Удалить чат '" + currentTitle + "'?",
                     "Подтверждение", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
@@ -327,6 +383,61 @@ public class SidebarPanel extends JPanel {
                 refresh();
                 frame.getChatView().refresh();
             }
+        }
+    }
+
+    /**
+     * R-P1.9.4: переносит чат в выбранный проект — привязывает его к проекту и применяет
+     * дефолты проекта (БД проекта + LPG, профильный навык/инструменты) через
+     * {@link ProjectManager#applyProjectDefaults}.
+     */
+    private void moveChatToProject(String chatId, String currentTitle) {
+        Map<String, String> projectNames = ProjectManager.projectNames(frame.getStore());
+        if (projectNames.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Нет созданных проектов. Сначала создайте проект кнопкой «Создать проект».",
+                    "Переместить в проект", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Object[] ids = projectNames.keySet().toArray();
+        String[] names = new String[ids.length];
+        for (int i = 0; i < ids.length; i++) {
+            names[i] = projectNames.get(ids[i]);
+        }
+        String chosen = (String) JOptionPane.showInputDialog(this,
+                "Переместить чат «" + currentTitle + "» в проект:", "Переместить в проект",
+                JOptionPane.QUESTION_MESSAGE, null, names, names[0]);
+        if (chosen == null) {
+            return;
+        }
+        String projectId = null;
+        for (int i = 0; i < ids.length; i++) {
+            if (chosen.equals(names[i])) {
+                projectId = (String) ids[i];
+                break;
+            }
+        }
+        if (projectId == null) {
+            return;
+        }
+        Map<String, Object> project = frame.getStore().getProject(projectId);
+        Map<String, Object> chat = frame.getStore().getChat(chatId);
+        if (project == null || chat == null) {
+            return;
+        }
+        if (ProjectManager.applyProjectDefaults(frame.getStore(), chat, project)) {
+            chat.put("updated", Utils.nowIso());
+            frame.getStore().saveAll();
+            refresh();
+            frame.getChatView().refresh();
+            JOptionPane.showMessageDialog(this,
+                    "Чат «" + currentTitle + "» перенесён в проект «" + chosen + "».\n"
+                            + "Применены: БД проекта + «" + ProjectManager.LPG_DB
+                            + "» (чтение) и дефолтный навык/инструменты.",
+                    "Готово", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this, "Не удалось применить настройки проекта.",
+                    "Ошибка", JOptionPane.ERROR_MESSAGE);
         }
     }
 

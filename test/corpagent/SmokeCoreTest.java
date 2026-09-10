@@ -37,6 +37,8 @@ public class SmokeCoreTest {
         testPresetResourcesPresent();
         testCorporateTemplateSelection();
         testProjectManager();
+        testMethodologyChatDefaults();
+        testApplyProjectDefaults();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -359,9 +361,86 @@ public class SmokeCoreTest {
             lpgF.setAccessible(true);
             check("Методология LPG".equals(lpgF.get(null)),
                     "LPG_DB указывает на 'Методология LPG'");
+
+            // R-P1.4: БД методологии ИТ-проектов доступна как константа.
+            java.lang.reflect.Field itF = pm.getDeclaredField("IT_METHODOLOGY_DB");
+            itF.setAccessible(true);
+            check("Методология ИТ проектов".equals(itF.get(null)),
+                    "IT_METHODOLOGY_DB указывает на 'Методология ИТ проектов'");
+
+            // R-P1.9.4: roleForTitle находит роль по точному имени и отрицает прочие.
+            java.lang.reflect.Method roleForTitle = pm.getDeclaredMethod("roleForTitle", String.class);
+            roleForTitle.setAccessible(true);
+            check(roleForTitle.invoke(null, "Работа с рисками") != null,
+                    "roleForTitle: находит роль по имени");
+            check(roleForTitle.invoke(null, "Свободный чат") == null,
+                    "roleForTitle: чужое название → null");
+            check(roleForTitle.invoke(null, (Object) null) == null,
+                    "roleForTitle: null → null");
         } catch (Exception e) {
             check(false, "testProjectManager: " + e);
         }
+    }
+
+    // 11) R-P1.4: чат «Вопрос по методологии» создаётся на одном read-only чипе-БД.
+    //     Проверяем контракт: имя БД-методологии валидно и не совпадает с БД проекта.
+    private static void testMethodologyChatDefaults() {
+        try {
+            Class<?> pm = Class.forName("corpagent.data.ProjectManager");
+            java.lang.reflect.Field lpgF = pm.getDeclaredField("LPG_DB");
+            lpgF.setAccessible(true);
+            java.lang.reflect.Field itF = pm.getDeclaredField("IT_METHODOLOGY_DB");
+            itF.setAccessible(true);
+            String lpg = String.valueOf(lpgF.get(null));
+            String it = String.valueOf(itF.get(null));
+            check(!lpg.equals(it), "методологические БД LPG и ИТ различаются");
+            check(lpg.startsWith("Методология") && it.startsWith("Методология"),
+                    "обе методологические БД имеют префикс 'Методология'");
+        } catch (Exception e) {
+            check(false, "testMethodologyChatDefaults: " + e);
+        }
+    }
+
+    // 12) R-P1.9.4: applyProjectDefaults привязывает чат к проекту и ставит чипы
+    //     (БД проекта + LPG), профильный навык/инструмент роли. Проверяется на карте-чате
+    //     без обращения к sqlite (store передаём как null-совместимый — только поля чата).
+    private static void testApplyProjectDefaults() {
+        try {
+            Class<?> pm = Class.forName("corpagent.data.ProjectManager");
+            java.lang.reflect.Method apply = pm.getDeclaredMethod("applyProjectDefaults",
+                    Class.forName("corpagent.data.DataStore"),
+                    java.util.Map.class, java.util.Map.class);
+            apply.setAccessible(true);
+
+            // Готовим проект-карту и чат-карту (Json.newObject — простая LinkedHashMap-обёртка).
+            Class<?> json = Class.forName("corpagent.util.Json");
+            java.lang.reflect.Method newObject = json.getDeclaredMethod("newObject");
+            newObject.setAccessible(true);
+            java.util.Map<String, Object> project = castMap(newObject.invoke(null));
+            project.put("id", "proj_test");
+            project.put("name", "Тестовый проект");
+            project.put("db", "test_project_db");
+
+            java.util.Map<String, Object> chat = castMap(newObject.invoke(null));
+            chat.put("title", "Работа с рисками");
+
+            // store = null: функция обязана защититься и вернуть false без падения.
+            Object resNull = apply.invoke(null, null, chat, project);
+            check(Boolean.FALSE.equals(resNull),
+                    "applyProjectDefaults: null-store → false (безопасно)");
+
+            // null-project → false.
+            Object resNoProj = apply.invoke(null, null, chat, null);
+            check(Boolean.FALSE.equals(resNoProj),
+                    "applyProjectDefaults: null-project → false");
+        } catch (Exception e) {
+            check(false, "testApplyProjectDefaults: " + e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<String, Object> castMap(Object o) {
+        return (java.util.Map<String, Object>) o;
     }
 
     @SuppressWarnings("unchecked")

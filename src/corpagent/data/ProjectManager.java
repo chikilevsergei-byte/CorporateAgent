@@ -317,4 +317,72 @@ public final class ProjectManager {
         }
         return names;
     }
+
+    /** Имя предустановленной БД-методологии ИТ-проектов (R-P1.4). */
+    public static final String IT_METHODOLOGY_DB = "Методология ИТ проектов";
+
+    /**
+     * R-P1.9.4: применяет к чату «правила проекта» — привязку к проекту и дефолтные
+     * чипы (БД проекта + LPG-методология только на чтение, профильный навык и инструменты).
+     * Переиспользуется при переносе обычного чата в проект.
+     *
+     * <p>Навык/инструменты подбираются по роли, если название чата совпадает с одной
+     * из ролей {@link #CHAT_ROLES}; иначе — берётся только БД проекта + LPG.</p>
+     *
+     * @return true, если чат был привязан к проекту; false, если проект не найден.
+     */
+    public static boolean applyProjectDefaults(DataStore store, Map<String, Object> chat,
+            Map<String, Object> project) {
+        if (store == null || chat == null || project == null) {
+            return false;
+        }
+        String projectId = Json.str(project, "id", "");
+        String projectName = Json.str(project, "name", "");
+        String db = Json.str(project, "db", "");
+        if (projectId.isEmpty() || db.isEmpty()) {
+            return false;
+        }
+        chat.put("project", projectId);
+        chat.put("project_name", projectName);
+        chat.put("project_db", db);
+
+        List<Object> dbs = new ArrayList<Object>();
+        dbs.add(db);
+        if (store.getDatabase(LPG_DB) != null) {
+            dbs.add(LPG_DB);
+        }
+        chat.put("selected_databases", dbs);
+
+        // Профильные навык/инструменты — по совпадению названия чата с ролью проекта.
+        ChatRole role = roleForTitle(Json.str(chat, "title", ""));
+        List<Object> skillsList = new ArrayList<Object>();
+        if (role != null && role.skill != null && !role.skill.isEmpty()) {
+            skillsList.add(role.skill);
+        }
+        chat.put("selected_skills", skillsList);
+        List<Object> toolsList = new ArrayList<Object>();
+        if (role != null) {
+            for (String t : role.tools) {
+                toolsList.add(t);
+            }
+        }
+        chat.put("selected_tools", toolsList);
+        if (role != null) {
+            chat.put("role", role.title);
+        }
+        return true;
+    }
+
+    /** Возвращает определение роли по названию чата или null, если совпадений нет. */
+    public static ChatRole roleForTitle(String title) {
+        if (title == null) {
+            return null;
+        }
+        for (ChatRole r : CHAT_ROLES) {
+            if (r.title.equals(title)) {
+                return r;
+            }
+        }
+        return null;
+    }
 }
