@@ -47,6 +47,7 @@ public class SmokeCoreTest {
         testIosTheme();
         testUiTokens();
         testActionIcon();
+        testThemeSwitch();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -854,6 +855,41 @@ public class SmokeCoreTest {
                     "withActionIcon(): ставит иконку и единый зазор, возвращает кнопку");
         } catch (Exception e) {
             check(false, "testActionIcon: " + e);
+        }
+    }
+
+    // 20) UI-0.2: переключение светлой/тёмной палитры без перезапуска.
+    //     applyTheme("dark") меняет фоновый/текстовый цвета, isDark()==true;
+    //     applyTheme("green") возвращает светлую палитру (обратимость).
+    private static void testThemeSwitch() {
+        try {
+            Class<?> theme = Class.forName("corpagent.gui.UiTheme");
+
+            java.awt.Color lightBg = (java.awt.Color) getStatic(theme, "BG");
+            java.awt.Color lightText = (java.awt.Color) getStatic(theme, "TEXT");
+
+            java.lang.reflect.Method apply = theme.getMethod("applyTheme", String.class);
+            java.lang.reflect.Method isDark = theme.getMethod("isDark");
+            java.lang.reflect.Method curName = theme.getMethod("currentThemeName");
+
+            apply.invoke(null, "dark");
+            java.awt.Color darkBg = (java.awt.Color) getStatic(theme, "BG");
+            java.awt.Color darkText = (java.awt.Color) getStatic(theme, "TEXT");
+            check(Boolean.TRUE.equals(isDark.invoke(null)), "applyTheme(dark): isDark()==true");
+            check("dark".equals(curName.invoke(null)), "applyTheme(dark): currentThemeName()==dark");
+            check(!darkBg.equals(lightBg), "applyTheme(dark): фон изменился");
+            // В тёмной теме текст светлее фона (контраст).
+            check(darkText.getRed() > darkBg.getRed() && darkText.getGreen() > darkBg.getGreen(),
+                    "applyTheme(dark): текст светлее фона");
+
+            apply.invoke(null, "green");
+            java.awt.Color backBg = (java.awt.Color) getStatic(theme, "BG");
+            java.awt.Color backText = (java.awt.Color) getStatic(theme, "TEXT");
+            check(!Boolean.TRUE.equals(isDark.invoke(null)), "applyTheme(green): isDark()==false");
+            check(backBg.equals(lightBg) && backText.equals(lightText),
+                    "applyTheme(green): светлая палитра восстановлена (обратимость)");
+        } catch (Exception e) {
+            check(false, "testThemeSwitch: " + e);
         }
     }
 

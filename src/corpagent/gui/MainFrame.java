@@ -62,6 +62,7 @@ public class MainFrame extends JFrame {
     private String currentChatId = null;
     private String viewingDb = null;
     private String editingDb = null; // null | "import" | "visualize" | "export"
+    private String currentView = VIEW_CHAT;
 
     public MainFrame(Agent agent, DataStore store, DatabaseManager dbManager, FileCreator fileCreator,
                      String baseDir, Config config, Settings settings) {
@@ -73,13 +74,27 @@ public class MainFrame extends JFrame {
         this.config = config;
         this.settings = settings;
 
-        setTitle("🤖 AI ассистент руководителя проектов — CorporateAgent v3 (" + VERSION + ")");
+                setTitle("🤖 AI ассистент руководителя проектов — CorporateAgent v3 (" + VERSION + ")");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1280, 800);
         setMinimumSize(new Dimension(1000, 650));
         setLocationRelativeTo(null);
 
-        // Верхняя зелёная панель-заголовок
+        // Применяем сохранённую тему (UI-0.2) до сборки дерева UI.
+        Ui.applyTheme(settings.getTheme());
+
+        buildUI();
+        showView(currentView);
+        sidebar.refresh();
+    }
+
+    /**
+     * Собирает (или пересобирает) дерево UI: заголовок, сайдбар и представления.
+     * Вызывается из конструктора и повторно из {@link #applyTheme} при смене темы,
+     * чтобы компоненты перечитали текущую палитру {@link Ui}.
+     */
+    private void buildUI() {
+        // Верхняя панель-заголовок
         JPanel header = createHeader();
 
         // Боковая панель
@@ -92,6 +107,8 @@ public class MainFrame extends JFrame {
         dbManagerView = new DbManagerView(this);
         dbViewerView = new DbViewerView(this);
 
+        contentPanel.removeAll();
+        contentPanel.setBackground(Ui.BG);
         contentPanel.add(chatView, VIEW_CHAT);
         contentPanel.add(skillManagerView, VIEW_SKILLS);
         contentPanel.add(toolManagerView, VIEW_TOOLS);
@@ -102,6 +119,7 @@ public class MainFrame extends JFrame {
         split.setDividerLocation(300);
         split.setResizeWeight(0.0);
         split.setContinuousLayout(true);
+        split.setBorder(null);
 
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(Ui.BG);
@@ -109,8 +127,20 @@ public class MainFrame extends JFrame {
         root.add(split, BorderLayout.CENTER);
 
         setContentPane(root);
-        showView(VIEW_CHAT);
+    }
+
+    /**
+     * UI-0.2: применяет тему без перезапуска приложения — меняет палитру
+     * {@link Ui} и пересобирает дерево UI, сохраняя текущее представление.
+     */
+    public void applyTheme(String themeName) {
+        Ui.applyTheme(themeName);
+        String view = currentView;
+        buildUI();
+        showView(view);
         sidebar.refresh();
+        revalidate();
+        repaint();
     }
 
     private JPanel createHeader() {
@@ -159,6 +189,7 @@ public class MainFrame extends JFrame {
     // ==================== НАВИГАЦИЯ ====================
 
     public void showView(String view) {
+        this.currentView = view;
         cardLayout.show(contentPanel, view);
         if (VIEW_CHAT.equals(view)) {
             chatView.refresh();

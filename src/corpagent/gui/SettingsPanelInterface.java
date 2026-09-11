@@ -71,6 +71,13 @@ public class SettingsPanelInterface extends JPanel {
         add(Box.createVerticalStrut(6));
         themeCombo.setMaximumSize(new Dimension(200, 34));
         themeCombo.setFont(Ui.FONT_PLAIN);
+        // UI-0.2: живое переключение палитры без перезапуска (мгновенный предпросмотр).
+        themeCombo.addActionListener(e -> {
+            Object sel = themeCombo.getSelectedItem();
+            if (sel != null) {
+                frame.applyTheme(String.valueOf(sel));
+            }
+        });
         add(themeCombo);
         add(Box.createVerticalStrut(20));
 
@@ -123,7 +130,15 @@ public class SettingsPanelInterface extends JPanel {
         autoUpdateCheck.setSelected(settings.isAutoUpdateDb());
         showUsageCheck.setSelected(settings.isShowUsageInChat());
         confirmDbWriteCheck.setSelected(settings.isConfirmDbWrite());
+        // setSelectedItem программно не должно «проигрывать» тему — временно снимаем слушатели.
+        java.awt.event.ActionListener[] themeListeners = themeCombo.getActionListeners();
+        for (java.awt.event.ActionListener l : themeListeners) {
+            themeCombo.removeActionListener(l);
+        }
         themeCombo.setSelectedItem(settings.getTheme());
+        for (java.awt.event.ActionListener l : themeListeners) {
+            themeCombo.addActionListener(l);
+        }
         dailyLimitField.setText(String.valueOf(settings.getDailyLimitTokens()));
         updateSpendLabel();
     }

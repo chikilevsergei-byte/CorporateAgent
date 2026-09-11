@@ -225,6 +225,8 @@ public class SettingsDialog extends JDialog {
 
         // Обновить состояние фрейма (автообновление БД читается из settings)
         frame.setAutoUpdateDb(settings.isAutoUpdateDb());
+        // UI-0.2: гарантированно применить выбранную тему (светлая/тёмная) к UI.
+        frame.applyTheme(settings.getTheme());
         frame.refreshSidebar();
 
         JOptionPane.showMessageDialog(this, "Настройки сохранены.");
