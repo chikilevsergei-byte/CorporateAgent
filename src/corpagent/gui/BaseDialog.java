@@ -109,6 +109,66 @@ public class BaseDialog extends JDialog {
     }
 
     /**
+     * UI-3.3: анимация открытия модалки (перенос {@code @keyframes slideUp} из прототипа):
+     * плавное появление окна (fade-in) с кратким «всплытием» снизу. Реализуется без
+     * CSS через прозрачность окна и {@link javax.swing.Timer}. Если платформа не
+     * поддерживает прозрачность окон, анимация молча пропускается (диалог показывается
+     * как обычно) — это не влияет на работоспособность.
+     */
+    @Override
+    public void setVisible(boolean visible) {
+        if (visible) {
+            animateOpen();
+        }
+        super.setVisible(visible);
+    }
+
+    /** Длительность анимации открытия (мс). */
+    private static final int OPEN_ANIM_MS = 180;
+
+    private void animateOpen() {
+        // Прозрачность окон доступна не на всех платформах/окружениях (headless, старые WM).
+        if (java.awt.GraphicsEnvironment.isHeadless()
+                || !getGraphicsConfiguration().getDevice()
+                        .isWindowTranslucencySupported(
+                                java.awt.GraphicsDevice.WindowTranslucency.TRANSLUCENT)) {
+            return;
+        }
+        final int steps = 10;
+        final javax.swing.Timer timer = new javax.swing.Timer(OPEN_ANIM_MS / steps, null);
+        final int[] step = {0};
+        timer.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                step[0]++;
+                float p = Math.min(1f, (float) step[0] / steps);
+                // ease-out: быстрый старт, плавное завершение.
+                float ease = 1f - (1f - p) * (1f - p);
+                try {
+                    setOpacity(Math.max(0.02f, ease));
+                } catch (Exception ignore) {
+                    timer.stop();
+                    return;
+                }
+                if (p >= 1f) {
+                    timer.stop();
+                    try {
+                        setOpacity(1f);
+                    } catch (Exception ignore) {
+                        // оставляем как есть
+                    }
+                }
+            }
+        });
+        try {
+            setOpacity(0.02f);
+        } catch (Exception ignore) {
+            return;
+        }
+        timer.start();
+    }
+
+    /**
      * Рисует скруглённую рамку с мягкой тенью вокруг контента диалога
      * (перенесено из {@link SettingsDialog}). Общий для всех модалок UI-2.4.
      */

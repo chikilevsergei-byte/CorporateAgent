@@ -1148,6 +1148,15 @@ public class SmokeCoreTest {
             // BaseDialog является наследником JDialog (единая база модалок).
             Class<?> jdialog = Class.forName("javax.swing.JDialog");
             check(jdialog.isAssignableFrom(base), "BaseDialog extends JDialog");
+
+            // UI-3.3: BaseDialog переопределяет setVisible (анимация открытия включена),
+            // а не только наследует JDialog.setVisible.
+            java.lang.reflect.Method setVisible = base.getMethod("setVisible", boolean.class);
+            check(setVisible.getDeclaringClass() == base,
+                    "BaseDialog: setVisible переопределён (анимация открытия UI-3.3)");
+            java.lang.reflect.Field animMs = base.getDeclaredField("OPEN_ANIM_MS");
+            animMs.setAccessible(true);
+            check((Integer) animMs.get(null) > 0, "BaseDialog.OPEN_ANIM_MS > 0");
         } catch (Exception e) {
             check(false, "testBaseDialog: " + e);
         }
