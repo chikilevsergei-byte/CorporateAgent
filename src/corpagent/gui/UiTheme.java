@@ -1,5 +1,6 @@
 package corpagent.gui;
 
+
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -118,6 +119,35 @@ public class UiTheme {
     /** Единый «кликабельный» курсор (рука) для интерактивных элементов. */
     public static java.awt.Cursor handCursor() {
         return java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR);
+    }
+
+    // ==================== ИКОНКИ ДЕЙСТВИЙ (UI-0.3) ====================
+    // Единый размер/отступ для иконок кнопок и пунктов меню, чтобы не
+    // размазывать магические числа (14/16/18) по экранам.
+
+    /** Стандартный размер эмодзи-иконки действия (в пунктах). */
+    public static final int ACTION_ICON_SIZE = 16;
+    /** Стандартный зазор между иконкой и подписью действия. */
+    public static final int ACTION_ICON_GAP = GAP_SM;
+
+    /** Эмодзи-иконка действия стандартного размера ({@link #ACTION_ICON_SIZE}). */
+    public static Icon actionIcon(String emoji) {
+        return iconImage(emoji, ACTION_ICON_SIZE);
+    }
+
+    /** Эмодзи-иконка действия заданного размера. */
+    public static Icon actionIcon(String emoji, int size) {
+        return iconImage(emoji, size);
+    }
+
+    /**
+     * Ставит эмодзи-иконку действия на кнопку/пункт меню с единым зазором.
+     * Возвращает сам компонент для чейнинга.
+     */
+    public static <T extends javax.swing.AbstractButton> T withActionIcon(T b, String emoji) {
+        b.setIcon(actionIcon(emoji));
+        b.setIconTextGap(ACTION_ICON_GAP);
+        return b;
     }
 
     /** Возвращает первый доступный системный шрифт из списка (или последний как fallback). */

@@ -46,6 +46,7 @@ public class SmokeCoreTest {
         testStatusReport();
         testIosTheme();
         testUiTokens();
+        testActionIcon();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -827,6 +828,32 @@ public class SmokeCoreTest {
                     "handCursor(): возвращает курсор HAND_CURSOR");
         } catch (Exception e) {
             check(false, "testUiTokens: " + e);
+        }
+    }
+
+    // 19) UI-0.3: единый хелпер иконок действий — константы размера/зазора,
+    //     генерация эмодзи-иконки и установка её на кнопку с общим зазором.
+    private static void testActionIcon() {
+        try {
+            Class<?> theme = Class.forName("corpagent.gui.UiTheme");
+            int size = (Integer) getStatic(theme, "ACTION_ICON_SIZE");
+            int gap = (Integer) getStatic(theme, "ACTION_ICON_GAP");
+            check(size >= 14 && size <= 20, "ACTION_ICON_SIZE: разумный размер иконки (14..20)");
+            check(gap > 0, "ACTION_ICON_GAP: положительный зазор");
+
+            java.lang.reflect.Method actionIcon =
+                    theme.getMethod("actionIcon", String.class);
+            Object icon = actionIcon.invoke(null, "💾");
+            check(icon instanceof javax.swing.Icon, "actionIcon(): возвращает javax.swing.Icon");
+
+            java.lang.reflect.Method apply =
+                    theme.getMethod("withActionIcon", javax.swing.AbstractButton.class, String.class);
+            javax.swing.JButton btn = new javax.swing.JButton("Сохранить");
+            Object ret = apply.invoke(null, btn, "💾");
+            check(ret == btn && btn.getIcon() != null && btn.getIconTextGap() == gap,
+                    "withActionIcon(): ставит иконку и единый зазор, возвращает кнопку");
+        } catch (Exception e) {
+            check(false, "testActionIcon: " + e);
         }
     }
 

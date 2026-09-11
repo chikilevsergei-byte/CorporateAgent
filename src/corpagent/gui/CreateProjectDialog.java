@@ -204,8 +204,7 @@ public class CreateProjectDialog extends JDialog {
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
         Ui.styleButton(createBtn, true);
-        createBtn.setIcon(Ui.iconImage("🗂️", 16));
-        createBtn.setIconTextGap(6);
+        Ui.withActionIcon(createBtn, "🗂️");
         createBtn.addActionListener(e -> createProject());
         buttons.add(createBtn);
         JButton cancel = new JButton("Отмена");

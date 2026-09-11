@@ -554,14 +554,13 @@ public class ChatView extends JPanel {
                         JPanel fileRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
                         fileRow.setBackground(Ui.PRIMARY_SOFT);
                         JLabel fl = new JLabel("Файл создан: " + path);
-                        fl.setIcon(Ui.iconImage("📄", 16));
-                        fl.setIconTextGap(6);
+                        fl.setIcon(Ui.actionIcon("📄"));
+                        fl.setIconTextGap(Ui.ACTION_ICON_GAP);
                         fl.setFont(Ui.FONT_SMALL);
                         fileRow.add(fl);
                         JButton openBtn = new JButton("Открыть");
                         Ui.styleButton(openBtn, false);
-                        openBtn.setIcon(Ui.iconImage("📥", 16));
-                        openBtn.setIconTextGap(6);
+                        Ui.withActionIcon(openBtn, "📥");
                         openBtn.addActionListener(e -> openFile(path));
                         fileRow.add(openBtn);
                         fileRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));

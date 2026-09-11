@@ -101,9 +101,8 @@ public class SkillEditDialog extends JDialog {
         cancel.addActionListener(e -> dispose());
         buttons.add(cancel);
         JButton save = new JButton("Сохранить");
-        Ui.styleButton(save, true);
-        save.setIcon(Ui.iconImage("💾", 16));
-        save.setIconTextGap(6);
+                Ui.styleButton(save, true);
+        Ui.withActionIcon(save, "💾");
         save.addActionListener(e -> saveSkill());
         buttons.add(save);
 

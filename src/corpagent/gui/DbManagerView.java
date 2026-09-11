@@ -98,21 +98,21 @@ public class DbManagerView extends JPanel {
         buttons.setOpaque(false);
 
                 JButton generate = new JButton("Сгенерировать схему ИИ");
-        generate.setIcon(Ui.iconImage("✨", 16));
-        Ui.styleSecondary(generate);
-        generate.addActionListener(e -> generateSchema());
-        buttons.add(generate);
+                Ui.styleSecondary(generate);
+                Ui.withActionIcon(generate, "✨");
+                generate.addActionListener(e -> generateSchema());
+                buttons.add(generate);
 
-        JButton create = new JButton("Создать БД");
-        create.setIcon(Ui.iconImage("💾", 16));
-        Ui.styleButton(create, true);
-        create.addActionListener(e -> createDatabase());
-        buttons.add(create);
+                JButton create = new JButton("Создать БД");
+                Ui.styleButton(create, true);
+                Ui.withActionIcon(create, "💾");
+                create.addActionListener(e -> createDatabase());
+                buttons.add(create);
 
-        JButton back = new JButton("Назад");
-        back.setIcon(Ui.iconImage("←", 16));
-        Ui.styleButton(back, false);
-        back.addActionListener(e -> frame.showChat());
+                JButton back = new JButton("Назад");
+                Ui.styleButton(back, false);
+                Ui.withActionIcon(back, "←");
+                back.addActionListener(e -> frame.showChat());
                 buttons.add(back);
         content.add(buttons);
 
@@ -265,15 +265,15 @@ public class DbManagerView extends JPanel {
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setOpaque(false);
                 JButton choose = new JButton("Выбрать файлы");
-        choose.setIcon(Ui.iconImage("📁", 16));
-        Ui.styleSecondary(choose);
-        choose.addActionListener(e -> chooseSourceFiles());
-        row.add(choose);
+                Ui.styleSecondary(choose);
+                Ui.withActionIcon(choose, "📁");
+                choose.addActionListener(e -> chooseSourceFiles());
+                row.add(choose);
 
-        JButton create = new JButton("Создать БД из файлов");
-        create.setIcon(Ui.iconImage("🗄️", 16));
-        Ui.styleButton(create, true);
-        create.addActionListener(e -> createFromFiles());
+                JButton create = new JButton("Создать БД из файлов");
+                Ui.styleButton(create, true);
+                Ui.withActionIcon(create, "🗄️");
+                create.addActionListener(e -> createFromFiles());
         row.add(create);
         p.add(row);
         return p;

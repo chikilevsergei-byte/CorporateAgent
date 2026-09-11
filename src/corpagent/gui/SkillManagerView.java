@@ -96,16 +96,14 @@ public class SkillManagerView extends JPanel {
         content.add(Box.createVerticalStrut(12));
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
-        JButton save = new JButton("Сохранить");
+                JButton save = new JButton("Сохранить");
         Ui.styleButton(save, true);
-        save.setIcon(Ui.iconImage("💾", 16));
-        save.setIconTextGap(6);
+        Ui.withActionIcon(save, "💾");
         save.addActionListener(e -> saveSkill());
         buttons.add(save);
         JButton back = new JButton("Назад к чату");
         Ui.styleButton(back, false);
-        back.setIcon(Ui.iconImage("←", 16));
-        back.setIconTextGap(6);
+        Ui.withActionIcon(back, "←");
         back.addActionListener(e -> frame.showChat());
         buttons.add(back);
         content.add(buttons);
@@ -126,16 +124,14 @@ public class SkillManagerView extends JPanel {
         JLabel l = new JLabel(name);
         l.setFont(Ui.FONT_PLAIN);
         row.add(l);
-        JButton edit = new JButton("Редактировать");
+                JButton edit = new JButton("Редактировать");
         Ui.styleButton(edit, false);
-        edit.setIcon(Ui.iconImage("✏️", 14));
-        edit.setIconTextGap(5);
+        Ui.withActionIcon(edit, "✏️");
         edit.addActionListener(e -> loadForEdit(name));
         row.add(edit);
         JButton del = new JButton("Удалить");
         Ui.styleButton(del, false);
-        del.setIcon(Ui.iconImage("🗑️", 14));
-        del.setIconTextGap(5);
+        Ui.withActionIcon(del, "🗑️");
         del.addActionListener(e -> {
             int c = JOptionPane.showConfirmDialog(this, "Удалить навык '" + name + "'?",
                     "Подтверждение", JOptionPane.YES_NO_OPTION);

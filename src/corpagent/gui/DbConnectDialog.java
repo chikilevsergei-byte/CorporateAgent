@@ -117,9 +117,8 @@ public class DbConnectDialog extends JDialog {
         fileField.setPreferredSize(new Dimension(420, 28));
         fileRow.add(fileField);
         Ui.styleSecondary(browseBtn);
-        browseBtn.setText("Обзор");
-        browseBtn.setIcon(Ui.iconImage("📂", 14));
-        browseBtn.setIconTextGap(6);
+                browseBtn.setText("Обзор");
+        Ui.withActionIcon(browseBtn, "📂");
         browseBtn.addActionListener(e -> chooseFile());
         fileRow.add(browseBtn);
         sqlitePanel.add(fileRow);

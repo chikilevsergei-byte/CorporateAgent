@@ -66,7 +66,10 @@
       `RADIUS_XL/2XL`, хелпер кликабельного курсора. Смоук: `testUiTokens`.
 - [ ] **UI-0.2** Реальный Dark Mode: переключение палитры из `SettingsPanelInterface`
       без перезапуска (сейчас тема сохраняется, но палитра фиксирована).
-- [ ] **UI-0.3** Общий хелпер иконок действий (`Ui.actionIcon(emoji)`) — единый размер/отступ.
+- [x] **UI-0.3** Общий хелпер иконок действий (`Ui.actionIcon(emoji)`) — единый размер/отступ.
+      `UiTheme.ACTION_ICON_SIZE/GAP` + `actionIcon(emoji[,size])` + `withActionIcon(btn, emoji)`;
+      заменены разрозненные `setIcon(iconImage(...,14/16/18))+setIconTextGap(5/6)` в Skill/Tool
+      Manager, DbManager/Viewer, *EditDialog, CreateProjectDialog, ChatView. Смоук: `testActionIcon`.
 - [ ] **UI-0.4** Кастомный title bar (traffic-lights) для `MainFrame` — опционально, только если
       не ломает нативный resize/снап Windows.
 

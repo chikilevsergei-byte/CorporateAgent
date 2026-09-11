@@ -99,7 +99,7 @@ public class DbCreateFromFilesDialog extends JDialog {
         root.add(Box.createVerticalStrut(14));
 
         Ui.styleButton(createBtn, true);
-        createBtn.setIcon(Ui.iconImage("🗄️", 18));
+        Ui.withActionIcon(createBtn, "🗄️");
         createBtn.addActionListener(e -> createFromFiles());
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setOpaque(false);
