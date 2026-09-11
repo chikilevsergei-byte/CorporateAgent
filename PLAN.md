@@ -108,7 +108,9 @@
       вместо `JFileChooser` в `ChatView.chooseFiles()`. Смоук: `testDropZone`.
 - [x] **UI-3.3** Анимация открытия модалок (`BaseDialog`) — fade-in при `setVisible(true)`
       (Timer + ease-out, с проверкой поддержки прозрачности окон). Смоук: `testBaseDialog`.
-- [ ] **UI-3.4** Skeleton loaders для долгих операций (генерация схемы, upsert-план).
+- [x] **UI-3.4** Skeleton loaders для долгих операций — компонент `SkeletonLoader`
+      (пульсирующие строки-плейсхолдеры, анимация по `addNotify`/`removeNotify`),
+      применён в `ChatView` вместо текста «Думаю…». Смоук: `testSkeletonLoader`.
 - [x] **UI-3.5** Empty states с иконкой и подсказкой (чаты/навыки/инструменты/БД/просмотр БД) —
       компонент `EmptyState` (крупный глиф-эмодзи + заголовок + подсказка). Смоук: `testEmptyState`.
 

@@ -58,6 +58,7 @@ public class SmokeCoreTest {
         testBaseDialog();
         testEmptyState();
         testDropZone();
+        testSkeletonLoader();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1221,11 +1222,40 @@ public class SmokeCoreTest {
         }
     }
 
+    // 31) UI-3.4: Skeleton loader — число строк, размеры и диапазон анимации (headless).
+    private static void testSkeletonLoader() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.SkeletonLoader");
+            Object loader = cls.getConstructor(int.class, int.class).newInstance(3, 12);
+            check(loader instanceof javax.swing.JPanel, "SkeletonLoader: JPanel");
+
+            Method lineCount = cls.getMethod("lineCount");
+            check((Integer) lineCount.invoke(loader) == 3, "SkeletonLoader: 3 строки");
+
+            Method pref = cls.getMethod("getPreferredSize");
+            java.awt.Dimension d = (java.awt.Dimension) pref.invoke(loader);
+            check(d != null && d.height > 0, "SkeletonLoader: положительная высота");
+
+            Method alpha = cls.getMethod("currentAlpha");
+            int a = (Integer) alpha.invoke(loader);
+            check(a >= 30 && a <= 90, "SkeletonLoader: стартовая alpha в диапазоне (получено " + a + ")");
+
+            // paragraph(...) и message() — фабрики валидны.
+            Method paragraph = cls.getMethod("paragraph", int.class);
+            check(paragraph.invoke(null, 2) instanceof javax.swing.JPanel,
+                    "SkeletonLoader.paragraph: возвращает JPanel");
+            Method message = cls.getMethod("message");
+            check(message.invoke(null) instanceof javax.swing.JPanel,
+                    "SkeletonLoader.message: возвращает JPanel");
+        } catch (Exception e) {
+            check(false, "testSkeletonLoader: " + e);
+        }
+    }
+
     private static Object getStatic(Class<?> owner, String field) throws Exception {
         java.lang.reflect.Field f = owner.getField(field);
         return f.get(null);
     }
-
     @SuppressWarnings("unchecked")
     private static java.util.Map<String, Integer> castIntMap(Object o) {
         return (java.util.Map<String, Integer>) o;

@@ -466,10 +466,22 @@ public class ChatView extends JPanel {
         String fileContent = fileContents.isEmpty() ? null : String.join("\n\n", fileContents);
         String effectiveMessage = message.isEmpty() ? "Проанализируй загруженные файлы" : message;
 
-        // Показываем индикатор "Думаю..."
-        JEditorPane thinking = makePane("<i>🤔 Думаю...</i>");
-        thinking.setBackground(Ui.SURFACE);
-        messagesPanel.add(thinking);
+                // Показываем skeleton-заглушку «печатает…» вместо простого текста (UI-3.4).
+        JPanel thinkingWrap = new JPanel();
+        thinkingWrap.setLayout(new BoxLayout(thinkingWrap, BoxLayout.Y_AXIS));
+        thinkingWrap.setOpaque(false);
+        JLabel thinkingLabel = new JLabel("🤔 Думаю…");
+        thinkingLabel.setFont(Ui.FONT_SMALL);
+        thinkingLabel.setForeground(Ui.TEXT_SECONDARY);
+        thinkingLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        thinkingWrap.add(thinkingLabel);
+        thinkingWrap.add(Box.createVerticalStrut(Ui.GAP_XS));
+        JPanel skeleton = SkeletonLoader.message();
+        skeleton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        thinkingWrap.add(skeleton);
+        thinkingWrap.setAlignmentX(Component.LEFT_ALIGNMENT);
+        thinkingWrap.setMaximumSize(new Dimension(Integer.MAX_VALUE, 64));
+        messagesPanel.add(thinkingWrap);
         messagesPanel.revalidate();
         messagesPanel.repaint();
 
@@ -490,8 +502,8 @@ public class ChatView extends JPanel {
             }
 
             @Override
-            protected void done() {
-                messagesPanel.remove(thinking);
+                        protected void done() {
+                messagesPanel.remove(thinkingWrap);
                 try {
                     Agent.TaskResult result = get();
                     // Добавляем ответ ассистента
