@@ -59,6 +59,7 @@ public class SmokeCoreTest {
         testEmptyState();
         testDropZone();
         testSkeletonLoader();
+        testWelcomeView();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1249,6 +1250,35 @@ public class SmokeCoreTest {
                     "SkeletonLoader.message: возвращает JPanel");
         } catch (Exception e) {
             check(false, "testSkeletonLoader: " + e);
+        }
+    }
+
+    // 32) UI-4.1: приветственный экран — заголовок, подзаголовок и быстрые действия.
+    private static void testWelcomeView() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.WelcomeView");
+            Object wv = cls.getConstructor(String.class, String.class, String.class)
+                    .newInstance("🤖", "Добро пожаловать!", "Выберите действие");
+            check(wv instanceof javax.swing.JPanel, "WelcomeView: JPanel");
+
+            Method addAction = cls.getMethod("addAction", String.class, String.class,
+                    String.class, Runnable.class);
+            addAction.invoke(wv, "➕", "Новый чат", "Создать диалог", (Runnable) () -> { });
+            addAction.invoke(wv, "📁", "Создать проект", "БД + роли", (Runnable) () -> { });
+
+            Method actionCount = cls.getMethod("actionCount");
+            check((Integer) actionCount.invoke(wv) == 2, "WelcomeView: 2 быстрых действия");
+            Method titleAt = cls.getMethod("actionTitleAt", int.class);
+            check("Новый чат".equals(titleAt.invoke(wv, 0)),
+                    "WelcomeView: заголовок действия 0");
+
+            // Градиентный бейдж и карточка действия — внутренние классы на месте.
+            check(Class.forName("corpagent.gui.WelcomeView$GradientBadge") != null,
+                    "WelcomeView: GradientBadge присутствует");
+            check(Class.forName("corpagent.gui.WelcomeView$QuickActionCard") != null,
+                    "WelcomeView: QuickActionCard присутствует");
+        } catch (Exception e) {
+            check(false, "testWelcomeView: " + e);
         }
     }
 

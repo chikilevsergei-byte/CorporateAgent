@@ -257,17 +257,21 @@ public class ChatView extends JPanel {
         chipsBar.refresh();
     }
 
-    private void showWelcome() {
-        addInfo("<b>👋 Добро пожаловать!</b><br>Нажмите <b>➕ Новый чат</b> в боковой панели, чтобы начать.<br><br>"
-                + "<b>Что я умею:</b><br>"
-                + "💬 Отвечать на вопросы (провайдер: " + escapeHtml(providerDisplayName()) + ")<br>"
-                + "📊 Создавать презентации (PPTX)<br>"
-                + "📈 Создавать Excel-таблицы<br>"
-                + "🗄️ Создавать и управлять базами данных<br>"
-                + "📎 Анализировать загруженные документы<br>"
-                + "🧠 Сохранять навыки и инструменты<br>"
-                + "📊 Визуализировать данные из БД<br>"
-                + "🔄 Автоматически обновлять БД на основе контекста разговора");
+        private void showWelcome() {
+        // UI-4.1: приветственный экран в стиле прототипа (градиентная иконка + quick-actions).
+        WelcomeView welcome = new WelcomeView("🤖", "Добро пожаловать!",
+                "Провайдер: " + providerDisplayName() + " · выберите действие или напишите сообщение ниже");
+        welcome.addAction("➕", "Новый чат", "Создать пустой диалог",
+                frame::newChat);
+        welcome.addAction("📁", "Создать проект", "БД + рабочие чаты по ролям",
+                frame::createProject);
+        welcome.addAction("📚", "Вопрос по LPG", "Чат только на чтение методологии",
+                () -> frame.newMethodologyChat(corpagent.data.ProjectManager.LPG_DB, "LPG"));
+        welcome.addAction("💻", "Вопрос по ИТ", "Методология ИТ-проектов",
+                () -> frame.newMethodologyChat(corpagent.data.ProjectManager.IT_METHODOLOGY_DB, "ИТ"));
+        welcome.setAlignmentX(Component.LEFT_ALIGNMENT);
+        welcome.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        messagesPanel.add(welcome);
     }
 
     /** Человекочитаемое имя текущего провайдера из конфига (для приветственного экрана). */
