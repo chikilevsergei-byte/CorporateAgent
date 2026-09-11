@@ -232,7 +232,10 @@ public class Agent {
                     result.response = data;
                     return result;
                 }
-                String filePath = fileCreator.createExcel(data, null);
+                // C2.2: для пресет-инструментов Excel используем корп. шаблон из Шаблоны/
+                // (паспорт проекта / реестр рисков), данные дописываются под шапкой шаблона.
+                String excelTemplate = fileCreator.getCorporateExcelTemplate(excelTemplateKeys(toolsContext));
+                String filePath = fileCreator.createExcel(data, excelTemplate);
                 if (filePath.startsWith("ОШИБКА")) {
                     result.response = "❌ " + filePath;
                     return result;
@@ -472,6 +475,26 @@ public class Agent {
                 || lower.contains("создание презентации в шаблоне супер")
                                 || lower.contains("создание презентации к ук")
                 || lower.contains("создание презентации в шаблоне");
+    }
+
+    /**
+     * C2.2: ключи корп. Excel-шаблона по выбранному инструменту. Для пресет-инструментов
+     * «Создание паспорта проекта в Excel» / «Создание реестра рисков в Excel» возвращает
+     * фрагменты имени файла-шаблона в {@code Шаблоны/}. Для остальных — пустой массив,
+     * что означает создание Excel без шаблона.
+     */
+    private static String[] excelTemplateKeys(String toolsContext) {
+        if (toolsContext == null || toolsContext.isEmpty()) {
+            return new String[0];
+        }
+        String lower = toolsContext.toLowerCase();
+        if (lower.contains("паспорт")) {
+            return new String[]{"паспорт"};
+        }
+        if (lower.contains("реестр") || lower.contains("риск")) {
+            return new String[]{"реестр рисков", "реестр", "риск"};
+        }
+        return new String[0];
     }
 
     /** Извлекает имена из контекста вида "- имя: описание" (по строке на элемент). */

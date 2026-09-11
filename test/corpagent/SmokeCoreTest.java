@@ -36,6 +36,7 @@ public class SmokeCoreTest {
         testPresetDbPathResolution();
         testPresetResourcesPresent();
         testCorporateTemplateSelection();
+        testExcelTemplateSelection();
         testProjectManager();
         testMethodologyChatDefaults();
         testApplyProjectDefaults();
@@ -336,6 +337,56 @@ public class SmokeCoreTest {
             deleteRecursive(base);
         } catch (Exception e) {
             check(false, "testCorporateTemplateSelection: " + e);
+        }
+    }
+
+    // 9b) C2.2: выбор корп. Excel-шаблона по виду документа. Проверяем, что поиск в
+    //     {base}/Шаблоны/ не подхватывает лишние .xlsx/.xlsm и уважает регистр/приоритет ключей.
+    private static void testExcelTemplateSelection() {
+        try {
+            java.io.File base = java.nio.file.Files.createTempDirectory("ca_xltpl").toFile();
+            java.io.File tplDir = new java.io.File(base, "Шаблоны");
+            if (!tplDir.mkdirs()) {
+                throw new java.io.IOException("не удалось создать Шаблоны/");
+            }
+            // Пустышки: getCorporateExcelTemplate фильтрует по имени, XLSX не открывает.
+            java.io.File passport = new java.io.File(tplDir, "Шаблон_Паспорт проекта с примером.xlsx");
+            java.io.File risks = new java.io.File(tplDir, "Шаблон Реестр рисков.xlsx");
+            java.io.File planMacro = new java.io.File(tplDir, "Шаблон План проекта.xlsm");
+            passport.createNewFile();
+            risks.createNewFile();
+            planMacro.createNewFile();
+
+            FileCreator fc = new FileCreator(base + java.io.File.separator + "o", base.getPath());
+
+            String p = fc.getCorporateExcelTemplate("паспорт");
+            check(p != null && p.endsWith(passport.getName()),
+                    "Excel-шаблон: 'паспорт' находит Паспорт проекта (получено: " + p + ")");
+
+            String r = fc.getCorporateExcelTemplate("реестр рисков", "риск");
+            check(r != null && r.endsWith(risks.getName()),
+                    "Excel-шаблон: 'реестр рисков' находит Реестр рисков (получено: " + r + ")");
+
+            // .xlsm (макро-шаблон) не подхватывается — ищем только .xlsx.
+            String plan = fc.getCorporateExcelTemplate("план");
+            check(plan == null, "Excel-шаблон: .xlsm не подхватывается как .xlsx");
+
+            // Отсутствующий вид документа → null, при этом пустой keys() безопасен.
+            check(fc.getCorporateExcelTemplate("нет такого") == null,
+                    "Excel-шаблон: неизвестный ключ → null");
+            check(fc.getCorporateExcelTemplate() == null,
+                    "Excel-шаблон: пустой список ключей → null");
+
+            // Файлы-временные («~$…») игнорируются.
+            java.io.File tmp = new java.io.File(tplDir, "~$паспорт.xlsx");
+            tmp.createNewFile();
+            String p2 = fc.getCorporateExcelTemplate("паспорт");
+            check(p2 != null && !p2.contains("~$"),
+                    "Excel-шаблон: временный ~$ файл игнорируется");
+
+            deleteRecursive(base);
+        } catch (Exception e) {
+            check(false, "testExcelTemplateSelection: " + e);
         }
     }
 

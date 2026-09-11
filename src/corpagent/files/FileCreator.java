@@ -68,6 +68,45 @@ public class FileCreator {
     }
 
     /**
+     * Возвращает корп. Excel-шаблон из {base}/Шаблоны по виду документа (C2.2).
+     * Ищется .xlsx (временные файлы «~$…» игнорируются), в имени которого встречается
+     * один из ключевых фрагментов {@code keys}. Ключи проверяются в порядке приоритета.
+     *
+     * @param keys фрагменты имени (любой регистр), например {@code {"паспорт"}}
+     * @return абсолютный путь к шаблону или null, если шаблон не найден
+     */
+    public String getCorporateExcelTemplate(String... keys) {
+        if (baseDir == null || baseDir.trim().isEmpty() || keys == null || keys.length == 0) {
+            return null;
+        }
+        File dir = new File(baseDir, "Шаблоны");
+        if (!dir.isDirectory()) {
+            return null;
+        }
+        File[] files = dir.listFiles(new java.io.FileFilter() {
+            public boolean accept(File f) {
+                String n = f.getName().toLowerCase();
+                return f.isFile() && n.endsWith(".xlsx") && !n.startsWith("~$");
+            }
+        });
+        if (files == null) {
+            return null;
+        }
+        for (String key : keys) {
+            if (key == null || key.trim().isEmpty()) {
+                continue;
+            }
+            String k = key.toLowerCase();
+            for (File f : files) {
+                if (f.getName().toLowerCase().contains(k)) {
+                    return f.getAbsolutePath();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * Создаёт презентацию PPTX из текста, разделённого на слайды маркером ---SLIDE---.
      * Первая строка каждого слайда — заголовок, остальные — текст.
      *
@@ -357,14 +396,28 @@ public class FileCreator {
 
     /**
      * Создаёт Excel-файл XLSX из текста: строки разделены переносом, ячейки — ';'.
+     * Эквивалент {@code createExcel(data, templatePath, true)}.
      *
      * @return путь к файлу или строка «ОШИБКА ...» при сбое
      */
     public String createExcel(String data, String templatePath) {
+        return createExcel(data, templatePath, true);
+    }
+
+    /**
+     * Создаёт Excel-файл XLSX из текста: строки разделены переносом, ячейки — ';' (C2.2).
+     * <p>Если задан {@code templatePath}, книга открывается по корп. шаблону (сохраняются его
+     * стили и структура); при {@code appendAfterTemplate=true} данные дописываются под
+     * последней заполненной строкой шаблона, иначе — с первой строки (перезапись).</p>
+     *
+     * @return путь к файлу или строка «ОШИБКА ...» при сбое
+     */
+    public String createExcel(String data, String templatePath, boolean appendAfterTemplate) {
         try {
+            boolean hasTemplate = templatePath != null && !templatePath.trim().isEmpty()
+                    && Utils.exists(templatePath);
             org.apache.poi.xssf.usermodel.XSSFWorkbook wb;
-            if (templatePath != null && !templatePath.trim().isEmpty()
-                    && Utils.exists(templatePath)) {
+            if (hasTemplate) {
                 InputStream in = new FileInputStream(templatePath);
                 wb = new org.apache.poi.xssf.usermodel.XSSFWorkbook(in);
                 in.close();
@@ -375,15 +428,25 @@ public class FileCreator {
             if (ws == null) {
                 ws = wb.createSheet("Лист1");
             }
+            int startRow = 0;
+            if (hasTemplate && appendAfterTemplate) {
+                // Дописываем данные под последней непустой строкой шаблона.
+                startRow = ws.getLastRowNum() + 1;
+            }
             if (data != null) {
                 String[] rows = data.split("\n");
-                for (int i = 0; i < rows.length; i++) {
-                    String[] cells = rows[i].split(";");
-                    org.apache.poi.ss.usermodel.Row row = ws.createRow(i);
+                int r = 0;
+                for (String rawRow : rows) {
+                    if (rawRow.trim().isEmpty()) {
+                        continue;
+                    }
+                    String[] cells = rawRow.split(";");
+                    org.apache.poi.ss.usermodel.Row row = ws.createRow(startRow + r);
                     for (int j = 0; j < cells.length; j++) {
                         org.apache.poi.ss.usermodel.Cell cell = row.createCell(j);
                         cell.setCellValue(cells[j].trim());
                     }
+                    r++;
                 }
             }
             String filename = outputFolder + File.separator + "document_"

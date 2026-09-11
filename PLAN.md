@@ -25,7 +25,7 @@
 - [x] **C3.3** Отчёт «сделано / осталось / фокус» (SQL-агрегация по `tasks`):
       `StatusReport` (`buildStatusPrompt` / `buildNoDbContextHint` / `parseCounts` / `formatSummary`),
       ветка интента `STATUS` в `Agent.processTask` (сводка в чат через `runConversation`).
-- [ ] **C2.2** Excel по шаблону: `createExcel(data, templateFile)` (в `Шаблоны/` есть «Паспорт проекта», «Реестр рисков»).
+- [x] **C2.2** Excel по шаблону: `createExcel(data, templateFile)` (в `Шаблоны/` есть «Паспорт проекта», «Реестр рисков»).
 
 ## 🟠 P2 — политика / безопасность
 - [ ] **R-P2.1** Пароль на изменение API/настроек (PBKDF2+HMAC, соль, «забыл пароль»).
