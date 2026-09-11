@@ -54,6 +54,62 @@
 
 ---
 
+## 🎨 UI-рейд (ревью PLAN STILE.txt → Swing)
+
+> Источник: `PLAN STILE.txt` (дизайн-спека в веб-CSS). Проект — Java Swing,
+> токены уже в `UiTheme`/`Ui` (C6). Задачи ниже — перевод CSS-интентов в Swing
+> по конкретным файлам. «Glass» и анимации делаются Swing-приёмами
+> (полупрозрачные панели, скруглённый бордер, `javax.swing.Timer`), НЕ через CSS.
+
+### ⚙️ Сквозные (фундамент, делать первыми)
+- [x] **UI-0.1** Расширить `UiTheme`: spacing (`GAP_XS..GAP_2XL`), шрифты `FONT_XL/2XL`,
+      `RADIUS_XL/2XL`, хелпер кликабельного курсора. Смоук: `testUiTokens`.
+- [ ] **UI-0.2** Реальный Dark Mode: переключение палитры из `SettingsPanelInterface`
+      без перезапуска (сейчас тема сохраняется, но палитра фиксирована).
+- [ ] **UI-0.3** Общий хелпер иконок действий (`Ui.actionIcon(emoji)`) — единый размер/отступ.
+- [ ] **UI-0.4** Кастомный title bar (traffic-lights) для `MainFrame` — опционально, только если
+      не ломает нативный resize/снап Windows.
+
+### 🔴 Приоритет 1 — критично (быстрый UX-выигрыш)
+- [ ] **UI-1.1** Кастомное контекстное меню чата/проекта (замена `JOptionPane.showOptionDialog`
+      в `SidebarPanel.showChatMenu`/`showProjectMenu`): новый `ChatContextMenu` (`JPopupMenu`) —
+      иконка-шапка, пункты (Переименовать / Переместить в проект… / Pin / Удалить), `danger`-стиль.
+      DoD: компиляция + смоук состава пунктов.
+- [ ] **UI-1.2** Toggle-свитч (кастомный `ToggleSwitch`): трек iPad-стиль, бегунок с тенью,
+      анимация Timer. Применить в `SettingsPanelInterface` (3 чекбокса), `ChatChipsBar.showPicker`,
+      `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка.
+- [ ] **UI-1.3** Радио-карточки в `CreateProjectDialog` (источник БД) — `Ui.radioCard(...)`
+      с tint-подложкой `PRIMARY_SOFT` и синей рамкой при выборе.
+- [ ] **UI-1.4** Whitespace/иерархия форм: единые `UiTheme.GAP_*` + `Ui.formRow(label, control)`;
+      применить в `CreateProjectDialog`, `DbManagerView`, `SettingsPanel*`.
+
+### 🟠 Приоритет 2 — важно
+- [ ] **UI-2.1** Wizard «Создать проект» (3 шага: Основное → Источник БД → Роли/промпт):
+      панель прогресса (кружки-номера `active/completed`), `CardLayout` шагов, кнопки Назад/Далее/Создать.
+- [ ] **UI-2.2** БД-карточки вместо строк в `SettingsPanelDatabases` (иконка, имя, мета, путь mono,
+      статус-точка, hover-подъём).
+- [ ] **UI-2.3** Кастомный слайдер (`Ui.slider(...)` + подпись значения, заливка трека до бегунка).
+- [ ] **UI-2.4** Единый компонент модалок: `BaseDialog extends JDialog` (`setUndecorated(true)` +
+      `RoundedShadowBorder` + ESC). Перевести `CreateProjectDialog`, `UpdateProjectDbDialog`,
+      `DbConnectDialog`, `SkillEditDialog`, `ToolEditDialog`, `DbCreateFromFilesDialog`.
+
+### 🟡 Приоритет 3 — желательно
+- [ ] **UI-3.1** Toast-уведомления (`Toast`, авто-скрытие, типы) вместо информационных
+      `JOptionPane.showMessageDialog` (confirm/input оставить).
+- [ ] **UI-3.2** Кастомный File Picker (drag&drop, `TransferHandler`) вместо `JFileChooser`.
+- [ ] **UI-3.3** Анимация открытия модалок (`BaseDialog`).
+- [ ] **UI-3.4** Skeleton loaders для долгих операций (генерация схемы, upsert-план).
+- [ ] **UI-3.5** Empty states с иконкой и подсказкой (чаты/навыки/инструменты/БД).
+
+### 📝 Примечания
+- Порядок: UI-0.1 → P1 → P2 → P3. Каждая задача — отдельный коммит + смоук (DoD выше).
+- CSS-термины ревью (`backdrop-filter`, `@keyframes`, `:hover`) в Swing не применимы напрямую;
+  «hover» = `MouseListener` (уже есть `Ui.installHover`).
+- Файлы-кандидаты: `ChatContextMenu`, `ToggleSwitch`, `BaseDialog`, `Toast`, `FilePickerDialog`
+  — перед созданием grep по `src/` (правило 5).
+
+---
+
 ## 📐 Правила работы (сокращение токенов и рост качества)1. **Один коммит = одна задача** отсюда. Сначала проверь `git status` — рабочее дерево должно быть чистым.
 2. **Definition of Done:** `build.bat` компилируется без ошибок + покрыто `test/corpagent/SmokeCoreTest.java`, затем закоммичено.
 3. **Не читать файл целиком** при точечной правке — только нужный метод (offset/limit).

@@ -94,10 +94,31 @@ public class UiTheme {
 
     // ==================== СКРУГЛЕНИЯ ====================
     // iOS: крупные непрерывные скругления (continuous corner).
+    public static final int RADIUS_SM = 6;      // мелкие чипы/индикаторы
     public static final int RADIUS_BTN = 10;
     public static final int RADIUS_INPUT = 10;
     public static final int RADIUS_CARD = 14;
+    public static final int RADIUS_XL = 18;
     public static final int RADIUS_DIALOG = 18;
+    public static final int RADIUS_2XL = 24;    // крупные модалки/карточки
+
+    // ==================== ОТСТУПЫ (spacing scale) ====================
+    // Единая шкала интервалов вместо магических чисел в экранах.
+    public static final int GAP_XS = 4;
+    public static final int GAP_SM = 8;
+    public static final int GAP_MD = 16;
+    public static final int GAP_LG = 24;
+    public static final int GAP_XL = 32;
+    public static final int GAP_2XL = 48;
+
+    // ==================== ДОПОЛНИТЕЛЬНАЯ ТИПОГРАФИКА ====================
+    public static final Font FONT_XL = new Font(FONT, Font.BOLD, 22);
+    public static final Font FONT_2XL = new Font(FONT, Font.BOLD, 28);
+
+    /** Единый «кликабельный» курсор (рука) для интерактивных элементов. */
+    public static java.awt.Cursor handCursor() {
+        return java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR);
+    }
 
     /** Возвращает первый доступный системный шрифт из списка (или последний как fallback). */
     private static String pickSystemFont(String... families) {

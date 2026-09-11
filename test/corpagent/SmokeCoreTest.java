@@ -45,6 +45,7 @@ public class SmokeCoreTest {
         testProtocolExtractor();
         testStatusReport();
         testIosTheme();
+        testUiTokens();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -778,6 +779,54 @@ public class SmokeCoreTest {
                     "styleSecondary: текст кнопки — акцент iOS (синий)");
         } catch (Exception e) {
             check(false, "testIosTheme: " + e);
+        }
+    }
+
+    // 18) UI-0.1: дизайн-токены (spacing/шрифты/радиусы) и «кликабельный» курсор в UiTheme.
+    //     Проверяется наличие, монотонность шкалы отступов и корректный хелпер курсора
+    //     без запуска GUI.
+    private static void testUiTokens() {
+        try {
+            Class<?> theme = Class.forName("corpagent.gui.UiTheme");
+
+            int xs = (Integer) getStatic(theme, "GAP_XS");
+            int sm = (Integer) getStatic(theme, "GAP_SM");
+            int md = (Integer) getStatic(theme, "GAP_MD");
+            int lg = (Integer) getStatic(theme, "GAP_LG");
+            int xl = (Integer) getStatic(theme, "GAP_XL");
+            int xxl = (Integer) getStatic(theme, "GAP_2XL");
+            check(xs < sm && sm < md && md < lg && lg < xl && xl < xxl,
+                    "GAP_*: шкала отступов строго возрастает (4..48)");
+            check(xs == 4 && sm == 8 && md == 16 && lg == 24 && xl == 32 && xxl == 48,
+                    "GAP_*: ожидаемые значения 4/8/16/24/32/48");
+
+            // Радиусы: XS корректны и XL/2XL не меньше базовых.
+            int rSm = (Integer) getStatic(theme, "RADIUS_SM");
+            int rBtn = (Integer) getStatic(theme, "RADIUS_BTN");
+            int rCard = (Integer) getStatic(theme, "RADIUS_CARD");
+            int rXl = (Integer) getStatic(theme, "RADIUS_XL");
+            int r2Xl = (Integer) getStatic(theme, "RADIUS_2XL");
+            check(rSm > 0 && rSm <= rBtn && rBtn <= rCard && rCard <= rXl && rXl <= r2Xl,
+                    "RADIUS_*: скругления не убывают (SM..2XL)");
+
+            // Дополнительные шрифты существуют и крупнее базового.
+            java.awt.Font base = (java.awt.Font) getStatic(theme, "FONT_PLAIN");
+            java.awt.Font fontXl = (java.awt.Font) getStatic(theme, "FONT_XL");
+            java.awt.Font font2Xl = (java.awt.Font) getStatic(theme, "FONT_2XL");
+            check(fontXl != null && font2Xl != null
+                            && fontXl.getSize() > base.getSize()
+                            && font2Xl.getSize() > fontXl.getSize(),
+                    "FONT_XL/2XL: крупнее базового и строго возрастают");
+
+            // handCursor() возвращает курсор-руку (без обращения к дисплею).
+            java.lang.reflect.Method hand = theme.getDeclaredMethod("handCursor");
+            hand.setAccessible(true);
+            Object cursor = hand.invoke(null);
+            check(cursor instanceof java.awt.Cursor
+                            && ((java.awt.Cursor) cursor).getType() == java.awt.Cursor.HAND_CURSOR,
+                    "handCursor(): возвращает курсор HAND_CURSOR");
+        } catch (Exception e) {
+            check(false, "testUiTokens: " + e);
         }
     }
 
