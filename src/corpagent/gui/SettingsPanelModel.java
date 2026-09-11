@@ -94,17 +94,14 @@ public class SettingsPanelModel extends JPanel {
         add(modelCombo);
         add(Box.createVerticalStrut(14));
 
-        // Temperature (слайдер)
+        // Temperature (слайдер) — UI-2.3: тонкий iOS-слайдер с заливкой до бегунка.
         add(fieldLabel("Temperature (креативность)"));
         add(Box.createVerticalStrut(6));
-        temperatureSlider.setOpaque(false);
-        temperatureSlider.setPreferredSize(new Dimension(420, 40));
-        temperatureSlider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-        temperatureSlider.setPaintTicks(true);
-        temperatureSlider.setPaintLabels(true);
-        temperatureSlider.setMajorTickSpacing(50);
-        temperatureSlider.setMinorTickSpacing(10);
-        temperatureSlider.setLabelTable(buildSliderLabels());
+        Ui.styleSlider(temperatureSlider);
+        temperatureSlider.setPreferredSize(new Dimension(420, 32));
+        temperatureSlider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        temperatureSlider.setPaintTicks(false);
+        temperatureSlider.setPaintLabels(false);
         temperatureSlider.addChangeListener(e -> {
             double v = temperatureSlider.getValue() / 100.0;
             temperatureValue.setText(String.format("%.1f", v));

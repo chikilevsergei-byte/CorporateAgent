@@ -415,6 +415,68 @@ public final class Ui extends UiTheme {
         return row;
     }
 
+    // ==================== СЛАЙДЕР (UI-2.3) ====================
+
+    /**
+     * UI-2.3: стилизует {@link javax.swing.JSlider} под iOS-вид: тонкий серый трек,
+     * синяя заливка от начала до бегунка, круглый бегунок с тенью.
+     */
+    public static void styleSlider(javax.swing.JSlider s) {
+        s.setUI(new SlimSliderUI(s));
+        s.setOpaque(false);
+    }
+
+    /** Кастомный UI слайдера с заливкой трека до бегунка (iOS-стиль). */
+    public static class SlimSliderUI extends javax.swing.plaf.basic.BasicSliderUI {
+        private static final int TRACK_H = 4;
+        private static final int KNOB_D = 18;
+        private final javax.swing.JSlider slider;
+
+        public SlimSliderUI(javax.swing.JSlider s) {
+            super(s);
+            this.slider = s;
+        }
+
+        @Override
+        public void paintTrack(java.awt.Graphics g) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            int cy = trackRect.y + trackRect.height / 2;
+            int y = cy - TRACK_H / 2;
+            g2.setColor(BORDER_INPUT);
+            g2.fillRoundRect(trackRect.x, y, trackRect.width, TRACK_H, TRACK_H, TRACK_H);
+
+            int fillW = thumbRect.x + thumbRect.width / 2 - trackRect.x;
+            fillW = Math.max(0, Math.min(fillW, trackRect.width));
+            g2.setColor(PRIMARY);
+            g2.fillRoundRect(trackRect.x, y, fillW, TRACK_H, TRACK_H, TRACK_H);
+            g2.dispose();
+        }
+
+        @Override
+        public void paintThumb(java.awt.Graphics g) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            int x = thumbRect.x + (thumbRect.width - KNOB_D) / 2;
+            int y = thumbRect.y + (thumbRect.height - KNOB_D) / 2;
+            g2.setColor(new Color(0, 0, 0, 45));
+            g2.fillOval(x + 1, y + 2, KNOB_D, KNOB_D);
+            g2.setColor(Color.WHITE);
+            g2.fillOval(x, y, KNOB_D, KNOB_D);
+            g2.setColor(BORDER_INPUT);
+            g2.setStroke(new java.awt.BasicStroke(1f));
+            g2.drawOval(x, y, KNOB_D, KNOB_D);
+            g2.dispose();
+        }
+
+        @Override
+        protected java.awt.Dimension getThumbSize() {
+            return new java.awt.Dimension(KNOB_D, KNOB_D);
+        }
+    }
+
     // ==================== СОВРЕМЕННЫЕ ТАБЫ ====================
 
     /**

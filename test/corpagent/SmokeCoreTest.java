@@ -52,6 +52,7 @@ public class SmokeCoreTest {
         testToggleSwitch();
         testRadioCard();
         testFormRow();
+        testSlider();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -999,6 +1000,24 @@ public class SmokeCoreTest {
                     "formRow: разумная max-высота контрола (>=30)");
         } catch (Exception e) {
             check(false, "testFormRow: " + e);
+        }
+    }
+
+    // 25) UI-2.3: кастомный слайдер — установка UI и размер бегунка.
+    private static void testSlider() {
+        try {
+            javax.swing.JSlider s = new javax.swing.JSlider(0, 200, 70);
+            java.lang.reflect.Method styleSlider =
+                    Class.forName("corpagent.gui.Ui").getMethod("styleSlider",
+                            javax.swing.JSlider.class);
+            styleSlider.invoke(null, s);
+            check(s.getUI() != null, "styleSlider: UI установлен");
+            check(s.getUI().getClass().getName().contains("SlimSliderUI"),
+                    "styleSlider: используется SlimSliderUI");
+            java.awt.Dimension thumb = s.getUI().getPreferredSize(s);
+            check(thumb != null, "styleSlider: UI возвращает размер компонента");
+        } catch (Exception e) {
+            check(false, "testSlider: " + e);
         }
     }
 
