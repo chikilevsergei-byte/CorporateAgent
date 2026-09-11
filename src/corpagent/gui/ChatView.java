@@ -222,9 +222,10 @@ public class ChatView extends JPanel {
                     for (Object m : (List<?>) msgs) {
                         Map<String, Object> msg = Json.asMap(m);
                         if (msg != null) {
-                            String role = Json.str(msg, "role", "assistant");
+                                                        String role = Json.str(msg, "role", "assistant");
                             String text = Json.str(msg, "text");
-                            addMessageBubble(role, text);
+                            String time = Json.str(msg, "time");
+                            addMessageBubble(role, text, time.isEmpty() ? null : time);
                         }
                     }
                 } else {
@@ -301,22 +302,45 @@ public class ChatView extends JPanel {
         messagesPanel.add(Box.createVerticalStrut(6));
     }
 
-    private void addMessageBubble(String role, String text) {
+        private void addMessageBubble(String role, String text) {
+        addMessageBubble(role, text, null);
+    }
+
+    /**
+     * UI-4.2: добавляет сообщение как компонент {@link MessageBubble} (аватар, время,
+     * hover-действия). Действие «Копировать» доступно всегда; для ответа ассистента
+     * дополнительно доступно «Повторить в поле ввода».
+     */
+    private void addMessageBubble(String role, String text, String time) {
         boolean user = "user".equals(role);
-        String html = escapeHtml(text);
-        html = html.replace("\n", "<br>");
-        // iOS: пузырь пользователя — сплошной tint (синий) с белым текстом;
-        // ответ ассистента — белая «карточка» с системной тонкой рамкой.
-        JEditorPane pane = makePane(html, user ? "#FFFFFF" : "#1C1C1E");
-        pane.setEditable(false);
-        pane.setOpaque(true);
-        pane.setBackground(user ? Ui.PRIMARY : Ui.SURFACE);
-        pane.setBorder(BorderFactory.createCompoundBorder(
-                new Ui.RoundedBorder(user ? Ui.PRIMARY : Ui.BORDER, Ui.RADIUS_CARD, 1),
-                new EmptyBorder(10, 14, 10, 14)));
-        pane.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
-        messagesPanel.add(pane);
+        String html = escapeHtml(text).replace("\n", "<br>");
+        final String rawText = text == null ? "" : text;
+        MessageBubble bubble = new MessageBubble(role, html, time);
+
+        bubble.addAction("📋", "Копировать", () -> copyToClipboard(rawText));
+        if (!user) {
+            bubble.addAction("↩️", "Повторить в поле ввода",
+                    () -> inputArea.setText(rawText));
+        }
+
+        bubble.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
+        messagesPanel.add(bubble);
         messagesPanel.add(Box.createVerticalStrut(8));
+    }
+
+    /** Текущее локальное время в формате «HH:mm» (для метки времени сообщения). */
+    private static String nowTime() {
+        return new java.text.SimpleDateFormat("HH:mm").format(new java.util.Date());
+    }
+
+    /** Копирует текст в системный буфер обмена (буфер может быть недоступен — молча). */
+    private void copyToClipboard(String text) {
+        try {
+            java.awt.Toolkit.getDefaultToolkit().getSystemClipboard()
+                    .setContents(new java.awt.datatransfer.StringSelection(text), null);
+        } catch (Exception ignore) {
+            // Нет доступа к буферу обмена (headless/занят) — не критично.
+        }
     }
 
     private JEditorPane makePane(String html) {
@@ -385,14 +409,15 @@ public class ChatView extends JPanel {
             msgs = new ArrayList<Object>();
             chat.put("messages", msgs);
         }
-        Map<String, Object> userMsg = Json.newObject();
+                Map<String, Object> userMsg = Json.newObject();
         userMsg.put("role", "user");
         userMsg.put("text", fullMessage);
+        userMsg.put("time", nowTime());
         msgs.add(userMsg);
         chat.put("updated", Utils.nowIso());
         frame.getStore().saveAll();
 
-        addMessageBubble("user", fullMessage);
+        addMessageBubble("user", fullMessage, nowTime());
         if (!attachedFiles.isEmpty()) {
             addInfo("📎 Прикреплено файлов: " + attachedFiles.size());
         }
@@ -513,9 +538,10 @@ public class ChatView extends JPanel {
                     // Добавляем ответ ассистента
                     @SuppressWarnings("unchecked")
                     List<Object> curMsgs = (List<Object>) chat.get("messages");
-                    Map<String, Object> asstMsg = Json.newObject();
+                                        Map<String, Object> asstMsg = Json.newObject();
                     asstMsg.put("role", "assistant");
                     asstMsg.put("text", result.response);
+                    asstMsg.put("time", nowTime());
                     curMsgs.add(asstMsg);
                     chat.put("updated", Utils.nowIso());
 
@@ -526,7 +552,7 @@ public class ChatView extends JPanel {
                     }
                     frame.getStore().saveAll();
 
-                    addMessageBubble("assistant", result.response);
+                    addMessageBubble("assistant", result.response, nowTime());
 
                                         // Визуализация использования БД/навыков/инструментов
                     // («Показывать использование ... в чате» в настройках → Интерфейс)

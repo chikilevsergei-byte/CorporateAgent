@@ -60,6 +60,7 @@ public class SmokeCoreTest {
         testDropZone();
         testSkeletonLoader();
         testWelcomeView();
+        testMessageBubble();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1282,11 +1283,38 @@ public class SmokeCoreTest {
         }
     }
 
+    // 33) UI-4.2: MessageBubble — роль, hover-действия (копировать/повторить).
+    private static void testMessageBubble() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.MessageBubble");
+            Object userMsg = cls.getConstructor(String.class, String.class, String.class)
+                    .newInstance("user", "Привет", "14:32");
+            check(userMsg instanceof javax.swing.JPanel, "MessageBubble: JPanel");
+            Method isUser = cls.getMethod("isUser");
+            check(Boolean.TRUE.equals(isUser.invoke(userMsg)), "MessageBubble: роль user");
+
+            Method addAction = cls.getMethod("addAction", String.class, String.class, Runnable.class);
+            addAction.invoke(userMsg, "📋", "Копировать", (Runnable) () -> { });
+            Method actionCount = cls.getMethod("actionCount");
+            check((Integer) actionCount.invoke(userMsg) == 1, "MessageBubble: 1 действие");
+
+            // Нулевой колбэк игнорируется (кнопка не создаётся).
+            addAction.invoke(userMsg, "🗑️", "Удалить", null);
+            check((Integer) actionCount.invoke(userMsg) == 1,
+                    "MessageBubble: null-колбэк не создаёт кнопку");
+
+            Object aiMsg = cls.getConstructor(String.class, String.class, String.class)
+                    .newInstance("assistant", "Ответ", null);
+            check(Boolean.FALSE.equals(isUser.invoke(aiMsg)), "MessageBubble: роль assistant");
+        } catch (Exception e) {
+            check(false, "testMessageBubble: " + e);
+        }
+    }
+
     private static Object getStatic(Class<?> owner, String field) throws Exception {
         java.lang.reflect.Field f = owner.getField(field);
         return f.get(null);
-    }
-    @SuppressWarnings("unchecked")
+    }    @SuppressWarnings("unchecked")
     private static java.util.Map<String, Integer> castIntMap(Object o) {
         return (java.util.Map<String, Integer>) o;
     }
