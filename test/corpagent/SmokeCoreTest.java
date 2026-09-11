@@ -49,6 +49,7 @@ public class SmokeCoreTest {
         testActionIcon();
         testThemeSwitch();
         testChatContextMenu();
+        testToggleSwitch();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -924,6 +925,37 @@ public class SmokeCoreTest {
                     "ChatContextMenu: пункт Удалить помечен danger");
         } catch (Exception e) {
             check(false, "testChatContextMenu: " + e);
+        }
+    }
+
+    // 22) UI-1.2: расчёт позиции бегунка toggle-свитча (travelling от off к on).
+    //     Без отрисовки GUI: проверяем геометрию по формулам компонента.
+    private static void testToggleSwitch() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.ToggleSwitch");
+            Method knobX = cls.getMethod("knobX", int.class, int.class, float.class);
+
+            int w = 46;
+            int h = 28;
+            Integer x0 = (Integer) knobX.invoke(null, w, h, 0f);
+            Integer x1 = (Integer) knobX.invoke(null, w, h, 1f);
+            Integer xMid = (Integer) knobX.invoke(null, w, h, 0.5f);
+
+            check(x0 != null && x1 != null && x0 < x1,
+                    "ToggleSwitch: бегунок смещается вправо при включении");
+            check(xMid != null && xMid > x0 && xMid < x1,
+                    "ToggleSwitch: середина анимации между off и on");
+
+            // Создание свитча и корректная стартовая позиция progress.
+            Object off = cls.getConstructor(boolean.class).newInstance(false);
+            Object on = cls.getConstructor(boolean.class).newInstance(true);
+            Method knobProgress = cls.getMethod("knobProgress");
+            check(Math.abs(((Float) knobProgress.invoke(off))) < 0.001f,
+                    "ToggleSwitch(false): progress==0");
+            check(Math.abs(((Float) knobProgress.invoke(on)) - 1f) < 0.001f,
+                    "ToggleSwitch(true): progress==1");
+        } catch (Exception e) {
+            check(false, "testToggleSwitch: " + e);
         }
     }
 

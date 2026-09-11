@@ -18,7 +18,6 @@ import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -194,11 +193,11 @@ public class SettingsPanelDatabases extends JPanel {
         // Правая часть: toggle + кнопки
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.setOpaque(false);
-        boolean enabled = db == null || Json.bool(db, "enabled", true);
-        JCheckBox toggle = new JCheckBox("вкл", enabled);
-        toggle.setOpaque(false);
-        toggle.setFont(Ui.FONT_SMALL);
-        toggle.addActionListener(ev -> {
+                boolean enabled = db == null || Json.bool(db, "enabled", true);
+        // UI-1.2: modern toggle-свитч вместо JCheckBox.
+        ToggleSwitch toggle = new ToggleSwitch(enabled);
+        toggle.setToolTipText(enabled ? "Включена" : "Выключена");
+        toggle.addChangeListener(() -> {
             if (db != null) {
                 db.put("enabled", toggle.isSelected());
                 store.saveAll();

@@ -7,7 +7,6 @@ import corpagent.util.TokenBudget;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
@@ -33,9 +32,10 @@ public class SettingsPanelInterface extends JPanel {
 
     private final MainFrame frame;
 
-    private final JCheckBox autoUpdateCheck = new JCheckBox("🔄 Автообновление БД");
-    private final JCheckBox showUsageCheck = new JCheckBox("Показывать использование навыков/инструментов/БД в чате");
-    private final JCheckBox confirmDbWriteCheck = new JCheckBox("⚠️ Подтверждать запись изменений в БД (спрашивать перед db_execute)");
+    // UI-1.2: современные toggle-свитчи вместо JCheckBox (iPad-стиль).
+    private final ToggleSwitch autoUpdateCheck = new ToggleSwitch();
+    private final ToggleSwitch showUsageCheck = new ToggleSwitch();
+    private final ToggleSwitch confirmDbWriteCheck = new ToggleSwitch();
     private final JComboBox<String> themeCombo = new JComboBox<String>(new String[]{"green", "dark", "blue"});
     private final JTextField dailyLimitField = new JTextField("0", 12);
     private final JLabel spendLabel = new JLabel(" ");
@@ -52,19 +52,11 @@ public class SettingsPanelInterface extends JPanel {
         add(sectionLabel("Настройки интерфейса (сохраняются в settings.json)"));
         add(Box.createVerticalStrut(16));
 
-        autoUpdateCheck.setFont(Ui.FONT_PLAIN);
-        autoUpdateCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-        add(autoUpdateCheck);
+        add(toggleRow("🔄 Автообновление БД", autoUpdateCheck));
         add(Box.createVerticalStrut(10));
-
-        showUsageCheck.setFont(Ui.FONT_PLAIN);
-        showUsageCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-        add(showUsageCheck);
+        add(toggleRow("Показывать использование навыков/инструментов/БД в чате", showUsageCheck));
         add(Box.createVerticalStrut(10));
-
-        confirmDbWriteCheck.setFont(Ui.FONT_PLAIN);
-        confirmDbWriteCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-        add(confirmDbWriteCheck);
+        add(toggleRow("⚠️ Подтверждать запись изменений в БД (перед db_execute)", confirmDbWriteCheck));
         add(Box.createVerticalStrut(16));
 
         add(fieldLabel("Тема оформления"));
@@ -127,9 +119,9 @@ public class SettingsPanelInterface extends JPanel {
 
     /** Загружает текущие значения из {@link Settings} в поля вкладки. */
     public void load(Settings settings) {
-        autoUpdateCheck.setSelected(settings.isAutoUpdateDb());
-        showUsageCheck.setSelected(settings.isShowUsageInChat());
-        confirmDbWriteCheck.setSelected(settings.isConfirmDbWrite());
+        autoUpdateCheck.setSelectedSilently(settings.isAutoUpdateDb());
+        showUsageCheck.setSelectedSilently(settings.isShowUsageInChat());
+        confirmDbWriteCheck.setSelectedSilently(settings.isConfirmDbWrite());
         // setSelectedItem программно не должно «проигрывать» тему — временно снимаем слушатели.
         java.awt.event.ActionListener[] themeListeners = themeCombo.getActionListeners();
         for (java.awt.event.ActionListener l : themeListeners) {
@@ -228,5 +220,19 @@ public class SettingsPanelInterface extends JPanel {
         l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
+    }
+
+    /** UI-1.2: строка «подпись + toggle-свитч» (iOS Settings-стиль). */
+    private JPanel toggleRow(String text, ToggleSwitch toggle) {
+        JPanel row = new JPanel(new java.awt.BorderLayout(12, 0));
+        row.setOpaque(false);
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+        JLabel label = new JLabel(text);
+        label.setFont(Ui.FONT_PLAIN);
+        label.setForeground(Ui.TEXT);
+        row.add(label, java.awt.BorderLayout.CENTER);
+        row.add(toggle, java.awt.BorderLayout.EAST);
+        return row;
     }
 }

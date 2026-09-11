@@ -6,7 +6,6 @@ import corpagent.util.Json;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
@@ -288,24 +287,30 @@ public class ChatChipsBar extends JPanel {
             String name = e.getKey();
             Map<String, Object> data = Json.asMap(e.getValue());
             String icon = data == null ? "" : Json.str(data, "icon", "");
-            JCheckBox cb = new JCheckBox((icon.isEmpty() ? "" : icon + " ") + name);
-            cb.setOpaque(false);
-            cb.setFont(Ui.FONT_PLAIN);
-            cb.setSelected(selected.contains(name));
-            cb.addActionListener(ev -> {
-                if (cb.isSelected()) {
+            // UI-1.2: современный toggle-свитч вместо JCheckBox.
+            JPanel row = new JPanel(new BorderLayout(8, 0));
+            row.setBackground(Ui.SURFACE);
+            row.setBorder(new EmptyBorder(2, 4, 2, 6));
+            JLabel nameL = new JLabel((icon.isEmpty() ? "" : icon + " ") + name);
+            nameL.setFont(Ui.FONT_PLAIN);
+            nameL.setForeground(Ui.TEXT);
+            row.add(nameL, BorderLayout.CENTER);
+            ToggleSwitch toggle = new ToggleSwitch(selected.contains(name));
+            toggle.addChangeListener(() -> {
+                if (toggle.isSelected()) {
                     selected.add(name);
                 } else {
                     selected.remove(name);
                 }
                 refresh();
             });
-            list.add(cb);
+            row.add(toggle, BorderLayout.EAST);
+            list.add(row);
         }
 
         JScrollPane scroll = new JScrollPane(list);
         scroll.setBorder(null);
-        scroll.setPreferredSize(new Dimension(260, Math.min(40 + items.size() * 26, 240)));
+        scroll.setPreferredSize(new Dimension(260, Math.min(40 + items.size() * 34, 260)));
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         root.add(scroll, BorderLayout.CENTER);
 

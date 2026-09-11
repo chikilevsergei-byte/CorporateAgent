@@ -78,9 +78,9 @@
       в `SidebarPanel.showChatMenu`/`showProjectMenu`): новый `ChatContextMenu` (`JPopupMenu`) —
       иконка-шапка, пункты (Переименовать / Переместить в проект… / Pin / Удалить), `danger`-стиль.
       DoD: компиляция + смоук состава пунктов. `testChatContextMenu`.
-- [ ] **UI-1.2** Toggle-свитч (кастомный `ToggleSwitch`): трек iPad-стиль, бегунок с тенью,
+- [x] **UI-1.2** Toggle-свитч (кастомный `ToggleSwitch`): трек iPad-стиль, бегунок с тенью,
       анимация Timer. Применить в `SettingsPanelInterface` (3 чекбокса), `ChatChipsBar.showPicker`,
-      `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка.
+      `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка. `testToggleSwitch`.
 - [ ] **UI-1.3** Радио-карточки в `CreateProjectDialog` (источник БД) — `Ui.radioCard(...)`
       с tint-подложкой `PRIMARY_SOFT` и синей рамкой при выборе.
 - [ ] **UI-1.4** Whitespace/иерархия форм: единые `UiTheme.GAP_*` + `Ui.formRow(label, control)`;
