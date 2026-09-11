@@ -89,9 +89,10 @@
 ### 🟠 Приоритет 2 — важно
 - [ ] **UI-2.1** Wizard «Создать проект» (3 шага: Основное → Источник БД → Роли/промпт):
       панель прогресса (кружки-номера `active/completed`), `CardLayout` шагов, кнопки Назад/Далее/Создать.
-- [ ] **UI-2.2** БД-карточки вместо строк в `SettingsPanelDatabases` (иконка, имя, мета, путь mono,
-      статус-точка, hover-подъём).
-- [ ] **UI-2.3** Кастомный слайдер (`Ui.slider(...)` + подпись значения, заливка трека до бегунка).
+- [x] **UI-2.2** БД-карточки вместо строк в `SettingsPanelDatabases` (иконка, имя, мета, путь mono,
+      статус, hover-подсветка).
+- [x] **UI-2.3** Кастомный слайдер (`Ui.styleSlider`/`SlimSliderUI` — заливка трека до бегунка);
+      применён в `SettingsPanelModel`. Смоук: `testSlider`.
 - [ ] **UI-2.4** Единый компонент модалок: `BaseDialog extends JDialog` (`setUndecorated(true)` +
       `RoundedShadowBorder` + ESC). Перевести `CreateProjectDialog`, `UpdateProjectDbDialog`,
       `DbConnectDialog`, `SkillEditDialog`, `ToolEditDialog`, `DbCreateFromFilesDialog`.

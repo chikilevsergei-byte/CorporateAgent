@@ -129,11 +129,24 @@ public class SettingsPanelDatabases extends JPanel {
     }
 
     private JPanel dbCard(String name, Map<String, Object> db) {
-        JPanel card = new JPanel(new BorderLayout());
+                JPanel card = new JPanel(new BorderLayout());
         card.setBackground(Ui.SURFACE);
         card.setBorder(new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1));
-        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
-        card.setOpaque(false);
+        card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 140));
+        card.setOpaque(true);
+        // UI-2.2: мягкий hover-эффект (подсветка фона карточки).
+        card.setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+        card.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                card.setBackground(Ui.HOVER);
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                card.setBackground(Ui.SURFACE);
+            }
+        });
 
         // Левая часть: иконка + текст
         JPanel left = new JPanel();
@@ -181,11 +194,19 @@ public class SettingsPanelDatabases extends JPanel {
             text.add(descL);
         }
 
-        int usage = db == null ? 0 : Json.intVal(db, "usage_count", 0);
+                int usage = db == null ? 0 : Json.intVal(db, "usage_count", 0);
         JLabel usageL = new JLabel("Использований: " + usage);
         usageL.setFont(Ui.FONT_SMALL);
         usageL.setForeground(Ui.PRIMARY_DARK);
         text.add(usageL);
+
+        // UI-2.2: путь к БД отдельной строкой моноширинным шрифтом.
+        if (loc != null && !loc.isEmpty()) {
+            JLabel pathL = new JLabel(escape(Utils.truncate(loc, 90)));
+            pathL.setFont(Ui.FONT_MONO);
+            pathL.setForeground(Ui.TEXT_MUTED);
+            text.add(pathL);
+        }
 
         left.add(text);
         card.add(left, BorderLayout.CENTER);
