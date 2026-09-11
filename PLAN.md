@@ -81,8 +81,8 @@
 - [x] **UI-1.2** Toggle-свитч (кастомный `ToggleSwitch`): трек iPad-стиль, бегунок с тенью,
       анимация Timer. Применить в `SettingsPanelInterface` (3 чекбокса), `ChatChipsBar.showPicker`,
       `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка. `testToggleSwitch`.
-- [ ] **UI-1.3** Радио-карточки в `CreateProjectDialog` (источник БД) — `Ui.radioCard(...)`
-      с tint-подложкой `PRIMARY_SOFT` и синей рамкой при выборе.
+- [x] **UI-1.3** Радио-карточки в `CreateProjectDialog` (источник БД) — `Ui.radioCard(...)`
+      с tint-подложкой `PRIMARY_SOFT` и синей рамкой при выборе. Смоук: `testRadioCard`.
 - [ ] **UI-1.4** Whitespace/иерархия форм: единые `UiTheme.GAP_*` + `Ui.formRow(label, control)`;
       применить в `CreateProjectDialog`, `DbManagerView`, `SettingsPanel*`.
 

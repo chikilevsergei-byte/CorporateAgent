@@ -50,6 +50,9 @@ public class CreateProjectDialog extends JDialog {
     private final javax.swing.JRadioButton newDbRadio = new javax.swing.JRadioButton("Новая БД проекта (доменная схема)");
     private final javax.swing.JRadioButton existingDbRadio = new javax.swing.JRadioButton("Существующая БД из списка");
     private final javax.swing.JComboBox<String> existingDbCombo = new javax.swing.JComboBox<String>();
+    // UI-1.3: радио-карточки выбора источника БД.
+    private Ui.RadioCard newDbCard;
+    private Ui.RadioCard existingDbCard;
     private JPanel dbNameRow;
     private JPanel existingDbRow;
 
@@ -89,21 +92,41 @@ public class CreateProjectDialog extends JDialog {
         root.add(nameField);
         root.add(Box.createVerticalStrut(10));
 
-        // R-P1.9.5: выбор источника БД проекта.
+        // R-P1.9.5: выбор источника БД проекта (UI-1.3: радио-карточки).
         root.add(fieldLabel("Источник БД проекта"));
-        javax.swing.ButtonGroup srcGroup = new javax.swing.ButtonGroup();
         newDbRadio.setSelected(true);
         newDbRadio.setOpaque(false);
         existingDbRadio.setOpaque(false);
         newDbRadio.setFont(Ui.FONT_SMALL);
         existingDbRadio.setFont(Ui.FONT_SMALL);
-        newDbRadio.setAlignmentX(Component.LEFT_ALIGNMENT);
-        existingDbRadio.setAlignmentX(Component.LEFT_ALIGNMENT);
+        javax.swing.ButtonGroup srcGroup = new javax.swing.ButtonGroup();
         srcGroup.add(newDbRadio);
         srcGroup.add(existingDbRadio);
-        root.add(newDbRadio);
-        root.add(Box.createVerticalStrut(4));
-        root.add(existingDbRadio);
+
+        JPanel srcCards = new JPanel();
+        srcCards.setLayout(new BoxLayout(srcCards, BoxLayout.Y_AXIS));
+        srcCards.setOpaque(false);
+        srcCards.setAlignmentX(Component.LEFT_ALIGNMENT);
+        newDbCard = Ui.radioCard("Новая БД проекта (доменная схема)",
+                "Создать БД: tasks, risks, meetings, …", true);
+        newDbCard.onSelect(() -> {
+            newDbRadio.setSelected(true);
+            newDbCard.setSelected(true);
+            existingDbCard.setSelected(false);
+            updateSourceRows();
+        });
+        existingDbCard = Ui.radioCard("Существующая БД из списка",
+                "Использовать подключённую БД", false);
+        existingDbCard.onSelect(() -> {
+            existingDbRadio.setSelected(true);
+            existingDbCard.setSelected(true);
+            newDbCard.setSelected(false);
+            updateSourceRows();
+        });
+        srcCards.add(newDbCard);
+        srcCards.add(Box.createVerticalStrut(6));
+        srcCards.add(existingDbCard);
+        root.add(srcCards);
         root.add(Box.createVerticalStrut(6));
 
         // Ряд «Существующая БД» — комбобокс зарегистрированных БД (скрыт при выборе «новая»).

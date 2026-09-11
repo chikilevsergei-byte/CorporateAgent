@@ -4,6 +4,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
+import javax.swing.JLabel;
 import javax.swing.JPasswordField;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
@@ -290,6 +291,97 @@ public final class Ui extends UiTheme {
         s.setPreferredSize(new Dimension(1, 1));
         s.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
         return s;
+    }
+
+    // ==================== РАДИО-КАРТОЧКИ (UI-1.3) ====================
+
+    /**
+     * UI-1.3: кликабельная «радио-карточка» — tint-подложка и синяя рамка при выборе.
+     * Возвращает панель; выбор отмечается внутри через {@link Card#setSelected(boolean)}.
+     * Радио скрыт (управление — клик по всей карточке).
+     */
+    public static RadioCard radioCard(String title, String subtitle, boolean selected) {
+        return new RadioCard(title, subtitle, selected);
+    }
+
+    /** Кликабельная радио-карточка (iOS selection card). */
+    public static class RadioCard extends JPanel {
+        private static final long serialVersionUID = 1L;
+        private final javax.swing.JRadioButton radio = new javax.swing.JRadioButton();
+        private Runnable onSelect;
+        private boolean selected;
+
+        RadioCard(String title, String subtitle, boolean selected) {
+            setLayout(new java.awt.BorderLayout(10, 0));
+            setOpaque(true);
+            setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+            setBorder(new javax.swing.border.EmptyBorder(10, 12, 10, 12));
+            setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            setMaximumSize(new java.awt.Dimension(Integer.MAX_VALUE, subtitle == null ? 44 : 62));
+
+            radio.setOpaque(false);
+            radio.setFocusPainted(false);
+            radio.setEnabled(false);
+            radio.setSelected(selected);
+            add(radio, java.awt.BorderLayout.WEST);
+
+            JPanel text = new JPanel();
+            text.setLayout(new javax.swing.BoxLayout(text, javax.swing.BoxLayout.Y_AXIS));
+            text.setOpaque(false);
+            JLabel t = new JLabel(title);
+            t.setFont(FONT_PLAIN);
+            t.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            text.add(t);
+            if (subtitle != null && !subtitle.isEmpty()) {
+                JLabel s = new JLabel(subtitle);
+                s.setFont(FONT_SMALL);
+                s.setForeground(TEXT_MUTED);
+                s.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+                text.add(s);
+            }
+            add(text, java.awt.BorderLayout.CENTER);
+
+            final RadioCard self = this;
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    if (!radio.isEnabled()) {
+                        setSelected(true);
+                        if (onSelect != null) {
+                            onSelect.run();
+                        }
+                    }
+                }
+            });
+            this.selected = selected;
+            paintState(selected);
+        }
+
+        /** true — если карточка выбрана. */
+        public boolean isSelectedCard() {
+            return selected;
+        }
+
+        /** Меняет визуальное состояние выбора (без вызова onSelect). */
+        public void setSelected(boolean value) {
+            this.selected = value;
+            radio.setSelected(value);
+            paintState(value);
+            repaint();
+        }
+
+        /** Слушатель выбора карточки (вызывается при клике пользователя). */
+        public RadioCard onSelect(Runnable action) {
+            this.onSelect = action;
+            return this;
+        }
+
+        private void paintState(boolean value) {
+            setBackground(value ? PRIMARY_SOFT : SURFACE);
+            setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                    new RoundedBorder(value ? PRIMARY : BORDER, RADIUS_BTN, value ? 2 : 1),
+                    new javax.swing.border.EmptyBorder(10, 12, 10, 12)));
+        }
     }
 
     // ==================== СОВРЕМЕННЫЕ ТАБЫ ====================

@@ -50,6 +50,7 @@ public class SmokeCoreTest {
         testThemeSwitch();
         testChatContextMenu();
         testToggleSwitch();
+        testRadioCard();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -956,6 +957,30 @@ public class SmokeCoreTest {
                     "ToggleSwitch(true): progress==1");
         } catch (Exception e) {
             check(false, "testToggleSwitch: " + e);
+        }
+    }
+
+    // 23) UI-1.3: радио-карточка выбора — стартовое состояние и переключение выбора.
+    private static void testRadioCard() {
+        try {
+            Class<?> ui = Class.forName("corpagent.gui.Ui");
+            Method factory = ui.getMethod("radioCard", String.class, String.class, boolean.class);
+            Object card = factory.invoke(null, "Новая БД", "доменная схема", true);
+            Class<?> cardCls = Class.forName("corpagent.gui.Ui$RadioCard");
+
+            Method isSel = cardCls.getMethod("isSelectedCard");
+            Method setSel = cardCls.getMethod("setSelected", boolean.class);
+
+            check(Boolean.TRUE.equals(isSel.invoke(card)),
+                    "radioCard: стартовое состояние selected=true");
+            setSel.invoke(card, false);
+            check(Boolean.FALSE.equals(isSel.invoke(card)),
+                    "radioCard: setSelected(false) снимает выбор");
+            setSel.invoke(card, true);
+            check(Boolean.TRUE.equals(isSel.invoke(card)),
+                    "radioCard: setSelected(true) возвращает выбор");
+        } catch (Exception e) {
+            check(false, "testRadioCard: " + e);
         }
     }
 
