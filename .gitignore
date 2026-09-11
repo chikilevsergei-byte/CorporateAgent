@@ -27,6 +27,7 @@ databases.json
 db_logs.json
 skills.json
 tools.json
+projects.json
 backups/
 databases/
 
