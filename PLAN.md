@@ -104,7 +104,8 @@
       success/error/warning/info) вместо информационных `JOptionPane.showMessageDialog`
       (confirm/input оставлены). Внедрено: сохранение навыка/инструмента, бэкап/восстановление,
       пресет-защита, создание проекта, приветственный тост при старте. Смоук: `testToast`.
-- [ ] **UI-3.2** Кастомный File Picker (drag&drop, `TransferHandler`) вместо `JFileChooser`.
+- [x] **UI-3.2** Кастомный File Picker (`FilePickerDialog` + `DropZone`, drag&drop `TransferHandler`)
+      вместо `JFileChooser` в `ChatView.chooseFiles()`. Смоук: `testDropZone`.
 - [ ] **UI-3.3** Анимация открытия модалок (`BaseDialog`).
 - [ ] **UI-3.4** Skeleton loaders для долгих операций (генерация схемы, upsert-план).
 - [x] **UI-3.5** Empty states с иконкой и подсказкой (чаты/навыки/инструменты/БД/просмотр БД) —

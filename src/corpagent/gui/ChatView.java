@@ -30,6 +30,7 @@ import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Frame;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
@@ -182,15 +183,17 @@ public class ChatView extends JPanel {
         });
     }
 
-    private void chooseFiles() {
-        JFileChooser chooser = new JFileChooser();
-        Ui.styleFileChooser(chooser);
-        chooser.setMultiSelectionEnabled(true);
-        chooser.setDialogTitle("Выберите файлы для анализа");
-        int result = chooser.showOpenDialog(this);
-        if (result == JFileChooser.APPROVE_OPTION) {
-            for (File f : chooser.getSelectedFiles()) {
-                attachedFiles.add(f);
+        private void chooseFiles() {
+        // UI-3.2: кастомный File Picker (модалка с drag&drop DropZone) вместо JFileChooser.
+        java.awt.Window w = javax.swing.SwingUtilities.getWindowAncestor(this);
+        Frame owner = (w instanceof Frame) ? (Frame) w : null;
+        FilePickerDialog picker = new FilePickerDialog(owner, null);
+        picker.setVisible(true);
+        if (picker.isApproved()) {
+            for (File f : picker.getSelectedFiles()) {
+                if (!attachedFiles.contains(f)) {
+                    attachedFiles.add(f);
+                }
             }
             updateAttachedLabel();
         }

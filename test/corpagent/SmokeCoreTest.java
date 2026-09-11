@@ -57,6 +57,7 @@ public class SmokeCoreTest {
         testToast();
         testBaseDialog();
         testEmptyState();
+        testDropZone();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1173,6 +1174,41 @@ public class SmokeCoreTest {
                     "EmptyState: иконка-глиф + заголовок (>=2 JLabel)");
         } catch (Exception e) {
             check(false, "testEmptyState: " + e);
+        }
+    }
+
+    // 30) UI-3.2: DropZone (drag&drop зона файлов) — фильтр расширений и TransferHandler
+    //     без открытия диалогов (headless-безопасно). FilePickerDialog расширяет JDialog,
+    //     поэтому в headless не конструируется — проверяем наличие класса и его базовый тип.
+    private static void testDropZone() {
+        try {
+            Class<?> dz = Class.forName("corpagent.gui.DropZone");
+            Object zone = dz.getConstructor(String[].class, boolean.class)
+                    .newInstance((Object) new String[]{"pdf", "txt"}, true);
+            check(zone instanceof javax.swing.JPanel, "DropZone: JPanel");
+
+            Method accepts = dz.getMethod("acceptsName", String.class);
+            check(Boolean.TRUE.equals(accepts.invoke(zone, "report.pdf")),
+                    "DropZone: принимает .pdf");
+            check(Boolean.TRUE.equals(accepts.invoke(zone, "notes.TXT")),
+                    "DropZone: расширения без учёта регистра");
+            check(Boolean.FALSE.equals(accepts.invoke(zone, "image.png")),
+                    "DropZone: отклоняет неподдерживаемое расширение");
+
+            Method supports = dz.getMethod("supportsFileDrop");
+            check(Boolean.TRUE.equals(supports.invoke(zone)),
+                    "DropZone: TransferHandler установлен (drag&drop включён)");
+            Method isDragover = dz.getMethod("isDragover");
+            check(Boolean.FALSE.equals(isDragover.invoke(zone)),
+                    "DropZone: изначально без dragover");
+
+            // FilePickerDialog — наследник BaseDialog (=> JDialog), но не создаём в headless.
+            Class<?> picker = Class.forName("corpagent.gui.FilePickerDialog");
+            Class<?> base = Class.forName("corpagent.gui.BaseDialog");
+            check(base.isAssignableFrom(picker),
+                    "FilePickerDialog extends BaseDialog");
+        } catch (Exception e) {
+            check(false, "testDropZone: " + e);
         }
     }
 
