@@ -106,7 +106,8 @@
       пресет-защита, создание проекта, приветственный тост при старте. Смоук: `testToast`.
 - [x] **UI-3.2** Кастомный File Picker (`FilePickerDialog` + `DropZone`, drag&drop `TransferHandler`)
       вместо `JFileChooser` в `ChatView.chooseFiles()`. Смоук: `testDropZone`.
-- [ ] **UI-3.3** Анимация открытия модалок (`BaseDialog`).
+- [x] **UI-3.3** Анимация открытия модалок (`BaseDialog`) — fade-in при `setVisible(true)`
+      (Timer + ease-out, с проверкой поддержки прозрачности окон). Смоук: `testBaseDialog`.
 - [ ] **UI-3.4** Skeleton loaders для долгих операций (генерация схемы, upsert-план).
 - [x] **UI-3.5** Empty states с иконкой и подсказкой (чаты/навыки/инструменты/БД/просмотр БД) —
       компонент `EmptyState` (крупный глиф-эмодзи + заголовок + подсказка). Смоук: `testEmptyState`.
