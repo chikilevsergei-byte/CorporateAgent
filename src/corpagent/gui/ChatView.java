@@ -125,13 +125,11 @@ public class ChatView extends JPanel {
 
         JPanel right = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
         right.setOpaque(false);
-        JButton sendBtn = new JButton("Отправить");
+                JButton sendBtn = new JButton("Отправить");
         Ui.stylePrimary(sendBtn);
-        sendBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        sendBtn.setForeground(Color.BLACK);
-        sendBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        sendBtn.setPreferredSize(new Dimension(148, 44));
-        sendBtn.setMinimumSize(new Dimension(148, 44));
+        sendBtn.setFont(Ui.FONT_BOLD);
+        sendBtn.setPreferredSize(new Dimension(132, 40));
+        sendBtn.setMinimumSize(new Dimension(132, 40));
         sendBtn.addActionListener(e -> sendMessage());
         right.add(sendBtn);
 
@@ -285,11 +283,11 @@ public class ChatView extends JPanel {
         return "DeepSeek";
     }
 
-    private void addInfo(String html) {
-        JEditorPane pane = makePane(html);
+        private void addInfo(String html) {
+        JEditorPane pane = makePane(html, "#1C1C1E");
         pane.setBackground(Ui.PRIMARY_SOFT);
         pane.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(209, 250, 229), 1),
+                new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1),
                 new EmptyBorder(10, 12, 10, 12)));
         pane.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         messagesPanel.add(pane);
@@ -300,26 +298,33 @@ public class ChatView extends JPanel {
         boolean user = "user".equals(role);
         String html = escapeHtml(text);
         html = html.replace("\n", "<br>");
-        JEditorPane pane = makePane(html);
+        // iOS: пузырь пользователя — сплошной tint (синий) с белым текстом;
+        // ответ ассистента — белая «карточка» с системной тонкой рамкой.
+        JEditorPane pane = makePane(html, user ? "#FFFFFF" : "#1C1C1E");
         pane.setEditable(false);
         pane.setOpaque(true);
-        pane.setBackground(user ? Ui.BG_USER : Ui.SURFACE);
+        pane.setBackground(user ? Ui.PRIMARY : Ui.SURFACE);
         pane.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(user ? Ui.BORDER_USER : Ui.BORDER, 1),
-                new EmptyBorder(8, 10, 8, 10)));
+                new Ui.RoundedBorder(user ? Ui.PRIMARY : Ui.BORDER, Ui.RADIUS_CARD, 1),
+                new EmptyBorder(10, 14, 10, 14)));
         pane.setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         messagesPanel.add(pane);
-        messagesPanel.add(Box.createVerticalStrut(6));
+        messagesPanel.add(Box.createVerticalStrut(8));
     }
 
     private JEditorPane makePane(String html) {
+        return makePane(html, "#1C1C1E");
+    }
+
+    private JEditorPane makePane(String html, String textColor) {
         // ВАЖНО: JEditorPane с типом "text/html" использует HTMLEditorKit, который
         // ИГНОРИРУЕТ setForeground()/setFont() компонента и применяет собственную
         // таблицу стилей по умолчанию. Без явного цвета/шрифта в HTML текст может
         // рендериться невидимым на некоторых JDK/L&F. Поэтому оборачиваем контент
-        // в <body> с явным цветом текста и шрифтом.
-        String styled = "<html><body style=\"color:#111827;font-family:'Segoe UI';font-size:14px;\">"
-                + html + "</body></html>";
+        // в <body> с явным цветом текста и системным шрифтом (SF Pro/Segoe UI).
+        String font = Ui.FONT;
+        String styled = "<html><body style=\"color:" + textColor + ";font-family:'"
+                + font + "';font-size:14px;\">" + html + "</body></html>";
         JEditorPane pane = new JEditorPane("text/html", styled);
         pane.setEditable(false);
         pane.setFont(Ui.FONT_PLAIN);

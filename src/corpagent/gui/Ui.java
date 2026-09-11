@@ -28,6 +28,11 @@ import java.awt.event.MouseEvent;
  * <p>Здесь собраны только методы стилизации: кнопки, поля ввода, табы, карточки,
  * JFileChooser и hover/focus-эффекты. Палитра, шрифты, скругления и отрисовка
  * эмодзи-иконок вынесены в {@link UiTheme}.</p>
+ *
+ * <p><b>C6 (UI в духе Apple/iOS).</b> Кнопки получили «сплошной системный» вид
+ * (filled = белый текст на tint-цвете; secondary = системная серая подложка с
+ * синим текстом), поля — тонкую системную рамку с синим focus-состоянием,
+ * добавлены крупные iOS-скругления и системные разделители.</p>
  */
 public final class Ui extends UiTheme {
 
@@ -44,7 +49,7 @@ public final class Ui extends UiTheme {
     /**
      * Применяет современный стиль к кнопке (обратная совместимость).
      *
-     * @param primary true — зелёная заливка с чёрным текстом; false — светлая кнопка
+     * @param primary true — заполненная системная кнопка (tint); false — серая
      */
     public static void styleButton(JButton b, boolean primary) {
         if (primary) {
@@ -54,11 +59,11 @@ public final class Ui extends UiTheme {
         }
     }
 
-    /** Primary-кнопка: зелёная заливка, чёрный текст, скругление, hover. */
+    /** Primary-кнопка (как iOS filled): системная заливка, БЕЛЫЙ текст, скругление, hover. */
     public static void stylePrimary(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(BLACK);
+        b.setForeground(WHITE);
         b.setBackground(PRIMARY);
         b.setBorder(new RoundedBorder(PRIMARY, RADIUS_BTN, 1));
         b.setOpaque(true);
@@ -66,49 +71,55 @@ public final class Ui extends UiTheme {
         b.setFocusable(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setMargin(new Insets(7, 16, 7, 16));
-        installHover(b, PRIMARY, PRIMARY_HOVER, PRIMARY_ACTIVE, BLACK);
+        installHover(b, PRIMARY, PRIMARY_HOVER, PRIMARY_ACTIVE, WHITE);
     }
 
-    /** Secondary-кнопка: прозрачный фон, серая рамка, чёрный текст. */
+    /**
+     * Secondary-кнопка (как iOS tinted/grey): системная серая подложка
+     * (systemGray6), синий текст, лёгкая рамка.
+     */
     public static void styleSecondary(JButton b) {
+        Color fill = new Color(242, 242, 247);      // systemGray6
+        Color fillHover = new Color(232, 232, 237);  // чуть темнее
+        Color fillActive = new Color(222, 222, 228);
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(BLACK);
-        b.setBackground(SURFACE);
-        b.setBorder(new RoundedBorder(BORDER_INPUT, RADIUS_BTN, 1));
+        b.setForeground(PRIMARY);
+        b.setBackground(fill);
+        b.setBorder(new RoundedBorder(new Color(0, 0, 0, 0), RADIUS_BTN, 1));
         b.setOpaque(true);
         b.setContentAreaFilled(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setMargin(new Insets(7, 16, 7, 16));
-        installHover(b, SURFACE, HOVER, new Color(229, 231, 235), BLACK);
+        installHover(b, fill, fillHover, fillActive, PRIMARY);
     }
 
-    /** Danger-кнопка: прозрачный фон, красный текст, hover с красной подложкой. */
+    /** Danger-кнопка: светлый фон, системный красный текст, hover с мягкой подложкой. */
     public static void styleDanger(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
         b.setForeground(ERROR);
         b.setBackground(SURFACE);
-        b.setBorder(new RoundedBorder(new Color(252, 165, 165), RADIUS_BTN, 1));
+        b.setBorder(new RoundedBorder(new Color(0, 0, 0, 0), RADIUS_BTN, 1));
         b.setOpaque(true);
         b.setContentAreaFilled(true);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setMargin(new Insets(7, 16, 7, 16));
-        installHover(b, SURFACE, ERROR_SOFT, new Color(254, 202, 202), ERROR);
+        installHover(b, SURFACE, ERROR_SOFT, new Color(255, 224, 221), ERROR);
     }
 
-    /** Icon-кнопка: квадратная, без рамки, hover-подложка, чёрный текст/иконка. */
+    /** Icon-кнопка: квадратная, без рамки, hover-подложка. */
     public static void styleIcon(JButton b) {
         b.setFocusPainted(false);
         b.setFont(FONT_PLAIN);
-        b.setForeground(BLACK);
+        b.setForeground(PRIMARY);
         b.setBackground(new Color(0, 0, 0, 0));
         b.setBorder(new EmptyBorder(6, 6, 6, 6));
         b.setOpaque(false);
         b.setContentAreaFilled(false);
         b.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         b.setPreferredSize(new Dimension(36, 36));
-        installHover(b, new Color(0, 0, 0, 0), HOVER, new Color(229, 231, 235), BLACK);
+        installHover(b, new Color(0, 0, 0, 0), HOVER, new Color(222, 222, 228), PRIMARY);
     }
 
     /** Длительность плавного перехода цвета (мс). */
@@ -183,7 +194,7 @@ public final class Ui extends UiTheme {
     // ==================== ПОЛЯ ВВОДА ====================
 
     /**
-     * Стилизует текстовое поле: скругление, рамка, focus-состояние.
+     * Стилизует текстовое поле: скругление, лёгкая системная рамка, focus-состояние.
      *
      * <p>ВАЖНО: компонент остаётся НЕПРОЗРАЧНЫМ (opaque=true) с белым фоном.
      * Прозрачные текстовые поля (opaque=false) в Swing некорректно отрисовывают
@@ -193,7 +204,7 @@ public final class Ui extends UiTheme {
     public static void styleField(JTextField f) {
         f.setFont(FONT_INPUT);
         f.setForeground(TEXT);
-        f.setCaretColor(TEXT);
+        f.setCaretColor(PRIMARY);
         f.setBackground(SURFACE);
         f.setOpaque(true);
         f.setBorder(new RoundedBorder(BORDER_INPUT, RADIUS_INPUT, 1));
@@ -204,7 +215,7 @@ public final class Ui extends UiTheme {
     public static void styleArea(JTextArea a) {
         a.setFont(FONT_INPUT);
         a.setForeground(TEXT);
-        a.setCaretColor(TEXT);
+        a.setCaretColor(PRIMARY);
         a.setBackground(SURFACE);
         a.setOpaque(true);
         a.setLineWrap(true);
@@ -217,14 +228,14 @@ public final class Ui extends UiTheme {
     public static void stylePassword(JPasswordField p) {
         p.setFont(FONT_INPUT);
         p.setForeground(TEXT);
-        p.setCaretColor(TEXT);
+        p.setCaretColor(PRIMARY);
         p.setBackground(SURFACE);
         p.setOpaque(true);
         p.setBorder(new RoundedBorder(BORDER_INPUT, RADIUS_INPUT, 1));
         installFieldFocus(p);
     }
 
-    /** Добавляет focus-эффект (зелёная рамка + мягкая тень) для поля. */
+    /** Добавляет focus-эффект (синяя рамка) для поля. */
     private static void installFieldFocus(final JComponent c) {
         c.addFocusListener(new FocusAdapter() {
             @Override
@@ -257,7 +268,7 @@ public final class Ui extends UiTheme {
 
     // ==================== ПАНЕЛИ / КАРТОЧКИ ====================
 
-    /** Создаёт панель-карточку с фоном Surface и скруглением. */
+    /** Создаёт панель-карточку с фоном Surface и крупным скруглением (iOS grouped). */
     public static JPanel card() {
         JPanel p = new JPanel();
         p.setBackground(SURFACE);
@@ -269,11 +280,23 @@ public final class Ui extends UiTheme {
         return p;
     }
 
+    /**
+     * Рисует горизонтальный системный разделитель-линию (iOS separator).
+     * Используйте вместо явных «рамок-контуров» для группировки.
+     */
+    public static JPanel separator() {
+        JPanel s = new JPanel();
+        s.setBackground(BORDER);
+        s.setPreferredSize(new Dimension(1, 1));
+        s.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        return s;
+    }
+
     // ==================== СОВРЕМЕННЫЕ ТАБЫ ====================
 
     /**
-     * Стилизует кнопку-вкладку: активная — жирный текст + нижняя рамка 2px Primary,
-     * неактивная — серый текст без рамки.
+     * Стилизует кнопку-вкладку: активная — жирный текст + нижняя линия 2px Primary,
+     * неактивная — серый текст без линии (iOS segmented/underline).
      */
     public static void styleTab(JButton b, boolean active) {
         b.setFocusPainted(false);

@@ -269,10 +269,10 @@ public class ChatChipsBar extends JPanel {
         }
 
         JPopupMenu popup = new JPopupMenu();
-        popup.setBorder(BorderFactory.createLineBorder(new Color(209, 213, 219)));
+        popup.setBorder(BorderFactory.createLineBorder(Ui.BORDER_INPUT));
 
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Color.WHITE);
+        root.setBackground(Ui.SURFACE);
 
         JLabel titleL = new JLabel("  " + title);
         titleL.setFont(Ui.FONT_SMALL_BOLD);
@@ -282,7 +282,7 @@ public class ChatChipsBar extends JPanel {
 
         JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        list.setBackground(Color.WHITE);
+        list.setBackground(Ui.SURFACE);
 
         for (Map.Entry<String, Object> e : items.entrySet()) {
             String name = e.getKey();
@@ -310,7 +310,7 @@ public class ChatChipsBar extends JPanel {
         root.add(scroll, BorderLayout.CENTER);
 
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
-        footer.setBackground(Color.WHITE);
+        footer.setBackground(Ui.SURFACE);
         JButton clear = new JButton("Сбросить");
         Ui.styleButton(clear, false);
         clear.addActionListener(ev -> {

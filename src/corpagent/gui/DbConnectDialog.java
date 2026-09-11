@@ -191,7 +191,7 @@ public class DbConnectDialog extends JDialog {
         form.add(timeoutSpinner);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(229, 231, 235)));
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.BORDER));
         JButton test = new JButton("🧪 Тестировать");
         Ui.styleButton(test, false);
         test.setToolTipText("Проверить подключение");
@@ -420,8 +420,8 @@ public class DbConnectDialog extends JDialog {
 
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        l.setForeground(Ui.TEXT_GRAY);
+                l.setFont(Ui.FONT_SMALL);
+        l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }

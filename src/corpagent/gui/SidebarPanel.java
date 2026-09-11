@@ -58,17 +58,15 @@ public class SidebarPanel extends JPanel {
         topButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
         topButtons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
-        JButton newChatBtn = new JButton("Новый чат");
+                JButton newChatBtn = new JButton("Новый чат");
         Ui.stylePrimary(newChatBtn);
-        newChatBtn.setForeground(Color.BLACK);
-        newChatBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        newChatBtn.setFont(Ui.FONT_BOLD);
         newChatBtn.addActionListener(e -> frame.newChat());
         topButtons.add(newChatBtn);
 
         JButton newProjectBtn = new JButton("Создать проект");
         Ui.styleSecondary(newProjectBtn);
-        newProjectBtn.setForeground(Color.BLACK);
-        newProjectBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
+        newProjectBtn.setFont(Ui.FONT_BOLD);
         newProjectBtn.addActionListener(e -> frame.createProject());
         topButtons.add(newProjectBtn);
 
@@ -81,17 +79,15 @@ public class SidebarPanel extends JPanel {
         methodButtons.setAlignmentX(Component.LEFT_ALIGNMENT);
         methodButtons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
-        JButton lpgBtn = new JButton("Вопрос по LPG");
+                JButton lpgBtn = new JButton("Вопрос по LPG");
         Ui.styleSecondary(lpgBtn);
-        lpgBtn.setForeground(Color.BLACK);
-        lpgBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lpgBtn.setFont(Ui.FONT_SMALL_BOLD);
         lpgBtn.addActionListener(e -> frame.newMethodologyChat(ProjectManager.LPG_DB, "LPG"));
         methodButtons.add(lpgBtn);
 
         JButton itBtn = new JButton("Вопрос по ИТ");
         Ui.styleSecondary(itBtn);
-        itBtn.setForeground(Color.BLACK);
-        itBtn.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        itBtn.setFont(Ui.FONT_SMALL_BOLD);
         itBtn.addActionListener(e ->
                 frame.newMethodologyChat(ProjectManager.IT_METHODOLOGY_DB, "ИТ"));
         methodButtons.add(itBtn);
@@ -101,7 +97,7 @@ public class SidebarPanel extends JPanel {
 
         // Заголовок «Чаты»
         JLabel chatsTitle = new JLabel("ЧАТЫ");
-        chatsTitle.setFont(new Font("Segoe UI", Font.BOLD, 11));
+        chatsTitle.setFont(Ui.FONT_SMALL_BOLD);
         chatsTitle.setForeground(Ui.TEXT_MUTED);
         chatsTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
         top.add(chatsTitle);

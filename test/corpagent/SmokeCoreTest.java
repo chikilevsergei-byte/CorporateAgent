@@ -44,6 +44,7 @@ public class SmokeCoreTest {
         testUpdateProjectDbHelpers();
         testProtocolExtractor();
         testStatusReport();
+        testIosTheme();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -736,6 +737,53 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testStatusReport: " + e);
         }
+    }
+
+    // 17) C6: iOS-оформление. Проверяем, что палитра темы соответствует iOS
+    //     (system blue, grouped background, separator) и что filled-кнопка получает
+    //     белый текст (а не чёрный, как раньше), без запуска GUI-событий.
+    private static void testIosTheme() {
+        try {
+            Class<?> ui = Class.forName("corpagent.gui.Ui");
+            java.awt.Color primary = (java.awt.Color) getStatic(ui, "PRIMARY");
+            java.awt.Color bg = (java.awt.Color) getStatic(ui, "BG");
+            java.awt.Color surface = (java.awt.Color) getStatic(ui, "SURFACE");
+            java.awt.Color border = (java.awt.Color) getStatic(ui, "BORDER");
+
+            check(primary != null && primary.equals(new java.awt.Color(0, 122, 255)),
+                    "PRIMARY = iOS system blue #007AFF");
+            check(bg != null && bg.equals(new java.awt.Color(242, 242, 247)),
+                    "BG = iOS grouped background #F2F2F7");
+            check(surface != null && surface.equals(java.awt.Color.WHITE),
+                    "SURFACE = белый (карточки/списки)");
+            check(border != null && border.equals(new java.awt.Color(229, 229, 234)),
+                    "BORDER = iOS separator #E5E5EA");
+
+            // stylePrimary не должен перекрашивать текст кнопки в чёрный.
+            javax.swing.JButton b = new javax.swing.JButton("Отправить");
+            java.lang.reflect.Method stylePrimary = ui.getDeclaredMethod("stylePrimary",
+                    javax.swing.JButton.class);
+            stylePrimary.setAccessible(true);
+            stylePrimary.invoke(null, b);
+            check(java.awt.Color.WHITE.equals(b.getForeground()),
+                    "stylePrimary: текст filled-кнопки белый (было чёрным)");
+
+            // styleSecondary — tinted-кнопка с синим текстом и серым фоном.
+            javax.swing.JButton s = new javax.swing.JButton("Настройки");
+            java.lang.reflect.Method styleSecondary = ui.getDeclaredMethod("styleSecondary",
+                    javax.swing.JButton.class);
+            styleSecondary.setAccessible(true);
+            styleSecondary.invoke(null, s);
+            check(primary.equals(s.getForeground()),
+                    "styleSecondary: текст кнопки — акцент iOS (синий)");
+        } catch (Exception e) {
+            check(false, "testIosTheme: " + e);
+        }
+    }
+
+    private static Object getStatic(Class<?> owner, String field) throws Exception {
+        java.lang.reflect.Field f = owner.getField(field);
+        return f.get(null);
     }
 
     @SuppressWarnings("unchecked")

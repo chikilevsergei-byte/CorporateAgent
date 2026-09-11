@@ -67,19 +67,19 @@ public class DbCreateFromFilesDialog extends JDialog {
         JLabel hint = new JLabel("<html>Выберите один или несколько файлов "
                 + "(txt/md/csv/html/docx/pdf/xlsx/pptx).<br>ИИ разберёт содержимое и построит структуру БД.</html>");
         hint.setFont(Ui.FONT_SMALL);
-        hint.setForeground(Ui.TEXT_GRAY);
+        hint.setForeground(Ui.TEXT_SECONDARY);
         root.add(hint);
         root.add(Box.createVerticalStrut(14));
 
         // Имя + описание
         root.add(fieldLabel("Имя БД (латиница/цифры/_-)"));
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        Ui.styleField(nameField);
+        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         root.add(nameField);
         root.add(Box.createVerticalStrut(10));
 
         root.add(fieldLabel("Описание БД (для чего)"));
-        descArea.setLineWrap(true);
-        descArea.setWrapStyleWord(true);
+        Ui.styleArea(descArea);
         root.add(new JScrollPane(descArea));
         root.add(Box.createVerticalStrut(12));
 
@@ -87,15 +87,11 @@ public class DbCreateFromFilesDialog extends JDialog {
         JPanel filesRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         filesRow.setOpaque(false);
         JButton choose = new JButton("📁 Выбрать файлы");
-        choose.setBackground(new Color(59, 130, 246));
-        choose.setForeground(Color.WHITE);
-        choose.setFocusPainted(false);
-        choose.setFont(Ui.FONT_PLAIN);
-        choose.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        Ui.styleSecondary(choose);
         choose.addActionListener(e -> chooseSourceFiles());
         filesRow.add(choose);
 
-        filesStatusLabel.setForeground(new Color(59, 130, 246));
+        filesStatusLabel.setForeground(Ui.PRIMARY);
         filesStatusLabel.setFont(Ui.FONT_SMALL);
         updateFilesLabelText();
         filesRow.add(filesStatusLabel);
@@ -193,7 +189,7 @@ public class DbCreateFromFilesDialog extends JDialog {
                 return;
             }
         }
-        statusLabel.setForeground(new Color(16, 185, 129));
+        statusLabel.setForeground(Ui.SUCCESS);
         statusLabel.setText("⏳ Извлечение файлов и построение схемы ИИ...");
         createBtn.setEnabled(false);
         final String fName = name;
@@ -223,13 +219,13 @@ public class DbCreateFromFilesDialog extends JDialog {
                                         + "\nЗаписей: " + r.totalRecords);
                         dispose();
                     } else {
-                        statusLabel.setForeground(Color.RED);
+                        statusLabel.setForeground(Ui.ERROR);
                         statusLabel.setText("❌ Ошибка: " + r.error);
                         JOptionPane.showMessageDialog(DbCreateFromFilesDialog.this,
                                 "Не удалось создать БД из файлов:\n" + r.error);
                     }
                 } catch (Exception ex) {
-                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setForeground(Ui.ERROR);
                     statusLabel.setText("❌ Ошибка: " + ex.getMessage());
                 }
             }

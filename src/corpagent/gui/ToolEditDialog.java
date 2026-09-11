@@ -126,7 +126,7 @@ public class ToolEditDialog extends JDialog {
         form.add(scroll(exampleArea, 50));
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(229, 231, 235)));
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.BORDER));
         JButton test = new JButton("🧪 Тестировать");
         Ui.styleButton(test, false);
         test.setToolTipText("Проверить подключение (для http — реальный запрос)");
@@ -383,8 +383,8 @@ public class ToolEditDialog extends JDialog {
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
         p.setOpaque(false);
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        l.setForeground(Ui.TEXT_GRAY);
+        l.setFont(Ui.FONT_SMALL);
+        l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         p.add(l);
         combo.setMaximumSize(new Dimension(width, 30));
@@ -394,7 +394,7 @@ public class ToolEditDialog extends JDialog {
     }
 
     private JScrollPane scroll(JTextArea area, int height) {
-        area.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        area.setFont(Ui.FONT_SMALL);
         JScrollPane sp = new JScrollPane(area);
         sp.setPreferredSize(new Dimension(540, height));
         sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
@@ -404,8 +404,8 @@ public class ToolEditDialog extends JDialog {
 
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        l.setForeground(Ui.TEXT_GRAY);
+        l.setFont(Ui.FONT_SMALL);
+        l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }

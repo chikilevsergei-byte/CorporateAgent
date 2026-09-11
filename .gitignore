@@ -61,6 +61,7 @@ _test_*.java
 _test_*.class
 _analyze_*.java
 _analyze_*.class
+_compile_check.bat
 build_test/
 *.tmp
 *.log

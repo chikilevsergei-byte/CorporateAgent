@@ -128,8 +128,8 @@ public class MainFrame extends JFrame {
         logo.setAlignmentY(Component.CENTER_ALIGNMENT);
         titleRow.add(logo);
         JLabel title = new JLabel("AI ассистент руководителя проектов");
-        title.setForeground(Ui.TEXT);
-        title.setFont(new Font("Segoe UI", Font.BOLD, 18));
+                title.setForeground(Ui.TEXT);
+        title.setFont(Ui.FONT_TITLE);
         title.setAlignmentY(Component.CENTER_ALIGNMENT);
         titleRow.add(title);
         header.add(titleRow, BorderLayout.WEST);
@@ -137,14 +137,12 @@ public class MainFrame extends JFrame {
         JPanel modelRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 16, 0));
         modelRow.setOpaque(false);
 
-        // Кнопка «Настройки» в стиле «Отправить» (зелёная, жирный текст) с шестерёнкой
+                // iOS-совместимая кнопка «Настройки»: компактная filled tint-кнопка (белый текст).
         JButton settingsBtn = new JButton("Настройки");
         Ui.stylePrimary(settingsBtn);
-        settingsBtn.setForeground(Color.BLACK);
-        settingsBtn.setFont(new Font("Segoe UI", Font.BOLD, 15));
-        settingsBtn.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
-        settingsBtn.setPreferredSize(new Dimension(148, 44));
-        settingsBtn.setMinimumSize(new Dimension(148, 44));
+        settingsBtn.setFont(Ui.FONT_BOLD);
+        settingsBtn.setPreferredSize(new Dimension(132, 38));
+        settingsBtn.setMinimumSize(new Dimension(132, 38));
         settingsBtn.addActionListener(e -> openSettings());
         modelRow.add(settingsBtn);
 

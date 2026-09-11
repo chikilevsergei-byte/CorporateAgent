@@ -44,7 +44,13 @@
 - [ ] ⚠️ **Ротация API-ключей** при релизе (ключи выведены из трекинга).
 
 ## 🔴 Финальный этап (после релиза)
-- [ ] **C6** UI в духе Apple/iOS (дизайн-система поверх `Ui.java`, экраны по одному).
+- [x] **C6** UI в духе Apple/iOS (дизайн-система поверх `Ui.java`, экраны по одному).
+      `UiTheme`: палитра iOS (system blue #007AFF, grouped bg #F2F2F7, separator #E5E5EA,
+      semantic green/red/orange), SF Pro/Segoe UI, радиусы BTN/INPUT/CARD/DIALOG.
+      `Ui.stylePrimary` — filled-кнопка с БЕЛЫМ текстом (убраны ручные `setForeground(BLACK)`).
+      Экраны на iOS-токенах: MainFrame, SidebarPanel, ChatView (синий пузырь пользователя),
+      ChatChipsBar, SkillManagerView, ToolManagerView, DbManagerView, DbViewerView,
+      Settings* и диалоги (карточки-формы, монопространство для SQL). Смоук: `testIosTheme`.
 
 ---
 

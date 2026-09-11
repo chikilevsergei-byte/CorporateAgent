@@ -95,7 +95,7 @@ public class SkillEditDialog extends JDialog {
         form.add(paramsField);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
-        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(229, 231, 235)));
+        buttons.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Ui.BORDER));
         JButton cancel = new JButton("Отмена");
         Ui.styleButton(cancel, false);
         cancel.addActionListener(e -> dispose());
@@ -214,7 +214,7 @@ public class SkillEditDialog extends JDialog {
     // ==================== ХЕЛПЕРЫ ====================
 
     private JScrollPane scroll(JTextArea area, int height) {
-        area.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        area.setFont(Ui.FONT_SMALL);
         JScrollPane sp = new JScrollPane(area);
         sp.setPreferredSize(new Dimension(500, height));
         sp.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
@@ -224,8 +224,8 @@ public class SkillEditDialog extends JDialog {
 
     private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
-        l.setForeground(Ui.TEXT_GRAY);
+        l.setFont(Ui.FONT_SMALL);
+        l.setForeground(Ui.TEXT_SECONDARY);
         l.setAlignmentX(Component.LEFT_ALIGNMENT);
         return l;
     }

@@ -49,7 +49,7 @@ public class DbViewerView extends JPanel {
     public DbViewerView(MainFrame frame) {
         this.frame = frame;
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setBackground(Ui.BG);
         setBorder(new EmptyBorder(16, 20, 16, 20));
     }
 
@@ -57,8 +57,9 @@ public class DbViewerView extends JPanel {
         removeAll();
         String dbName = frame.getViewingDb();
         if (dbName == null) {
-            JLabel empty = new JLabel("Выберите базу данных в боковой панели.");
-            empty.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+                        JLabel empty = new JLabel("Выберите базу данных в боковой панели.");
+            empty.setFont(Ui.FONT_PLAIN);
+            empty.setForeground(Ui.TEXT_SECONDARY);
             empty.setHorizontalAlignment(JLabel.CENTER);
             add(empty, BorderLayout.CENTER);
             revalidate();
@@ -68,8 +69,9 @@ public class DbViewerView extends JPanel {
 
         Map<String, Object> dbInfo = frame.getStore().getDatabase(dbName);
         if (dbInfo == null) {
-            JLabel empty = new JLabel("База данных '" + dbName + "' не найдена.");
-            empty.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+                        JLabel empty = new JLabel("База данных '" + dbName + "' не найдена.");
+            empty.setFont(Ui.FONT_PLAIN);
+            empty.setForeground(Ui.TEXT_SECONDARY);
             empty.setHorizontalAlignment(JLabel.CENTER);
             add(empty, BorderLayout.CENTER);
             revalidate();
@@ -83,15 +85,15 @@ public class DbViewerView extends JPanel {
         titleLabel.setForeground(Ui.TEXT_DARK);
 
         JPanel top = new JPanel(new BorderLayout());
-        top.setBackground(Color.WHITE);
+        top.setBackground(Ui.BG);
         JPanel titleRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        titleRow.setBackground(Color.WHITE);
+        titleRow.setBackground(Ui.BG);
         titleRow.add(Ui.icon("🗄️", 22));
         titleRow.add(titleLabel);
         top.add(titleRow, BorderLayout.WEST);
 
         JPanel topButtons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
-        topButtons.setBackground(Color.WHITE);
+        topButtons.setBackground(Ui.BG);
         JButton backup = new JButton("Бэкап");
         backup.setIcon(Ui.iconImage("🗄️", 16));
         Ui.styleButton(backup, false);
@@ -110,21 +112,21 @@ public class DbViewerView extends JPanel {
         top.add(topButtons, BorderLayout.EAST);
 
         JPanel center = new JPanel(new BorderLayout());
-        center.setBackground(Color.WHITE);
+        center.setBackground(Ui.BG);
 
         // --- Таблицы ---
         JPanel tablesPanel = new JPanel(new BorderLayout());
-        tablesPanel.setBackground(Color.WHITE);
+        tablesPanel.setBackground(Ui.BG);
         tablesPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         JLabel tablesTitle = new JLabel("Таблицы");
         tablesTitle.setFont(Ui.FONT_SMALL_BOLD);
         tablesTitle.setForeground(Ui.TEXT_SECONDARY);
         tablesTitle.setBorder(BorderFactory.createEmptyBorder(0, 2, 6, 0));
         JPanel tablesHeader = new JPanel(new BorderLayout());
-        tablesHeader.setBackground(Color.WHITE);
+        tablesHeader.setBackground(Ui.BG);
         tablesHeader.add(tablesTitle, BorderLayout.NORTH);
         JPanel comboRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        comboRow.setBackground(Color.WHITE);
+        comboRow.setBackground(Ui.BG);
         JLabel tableLbl = new JLabel("Таблица:");
         tableLbl.setFont(Ui.FONT_PLAIN);
         tableLbl.setForeground(Ui.TEXT);
@@ -150,10 +152,10 @@ public class DbViewerView extends JPanel {
         // --- SQL + журнал ---
         JPanel bottom = new JPanel();
         bottom.setLayout(new BoxLayout(bottom, BoxLayout.Y_AXIS));
-        bottom.setBackground(Color.WHITE);
+        bottom.setBackground(Ui.BG);
 
         JPanel sqlPanel = new JPanel(new BorderLayout());
-        sqlPanel.setBackground(Color.WHITE);
+        sqlPanel.setBackground(Ui.BG);
         sqlPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         JLabel sqlTitle = new JLabel("SQL-запрос");
         sqlTitle.setFont(Ui.FONT_SMALL_BOLD);
@@ -169,7 +171,7 @@ public class DbViewerView extends JPanel {
         Ui.styleButton(runSql, true);
         runSql.addActionListener(e -> runSql(dbName, dbPath));
         JPanel sqlBtnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
-        sqlBtnRow.setBackground(Color.WHITE);
+        sqlBtnRow.setBackground(Ui.BG);
         sqlBtnRow.add(runSql);
         JButton visualize = new JButton("Визуализировать");
         visualize.setIcon(Ui.iconImage("📊", 16));
@@ -181,7 +183,7 @@ public class DbViewerView extends JPanel {
         bottom.add(Box.createVerticalStrut(8));
 
         JPanel logPanel = new JPanel(new BorderLayout());
-        logPanel.setBackground(Color.WHITE);
+        logPanel.setBackground(Ui.BG);
         logPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
         JLabel logTitle = new JLabel("Журнал операций");
         logTitle.setFont(Ui.FONT_SMALL_BOLD);
@@ -199,7 +201,7 @@ public class DbViewerView extends JPanel {
         statusLabel.setForeground(Ui.PRIMARY);
 
         JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(Color.WHITE);
+        root.setBackground(Ui.BG);
         root.add(top, BorderLayout.NORTH);
         root.add(center, BorderLayout.CENTER);
         root.add(statusLabel, BorderLayout.SOUTH);
@@ -456,7 +458,7 @@ public class DbViewerView extends JPanel {
                         int barH = (int) (chartH * (v / max));
                         int x = padL + (int) (i * slot + (slot - barW) / 2);
                         int y = padT + chartH - barH;
-                        g.setColor(new Color(16, 185, 129));
+                                                g.setColor(Ui.PRIMARY);
                         g.fillRect(x, y, (int) barW, barH);
                         g.setColor(Color.DARK_GRAY);
                         String lbl = i < labels.size() ? labels.get(i) : String.valueOf(i + 1);
@@ -469,6 +471,7 @@ public class DbViewerView extends JPanel {
             content.setBorder(new EmptyBorder(10, 10, 10, 10));
             content.add(chart, BorderLayout.CENTER);
             JButton close = new JButton("Закрыть");
+            Ui.stylePrimary(close);
             close.addActionListener(e -> dispose());
             JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.CENTER));
             btnRow.add(close);

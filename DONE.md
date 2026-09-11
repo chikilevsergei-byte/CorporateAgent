@@ -52,3 +52,9 @@
 - `34fe4d2` chore(R-P3.1): gitignore
 - `d653b35` v3.3: R-P0.1 + R-P1.1/1.2/1.3 + R-P1.6/1.7
 - вЂ¦ Рё Р±РѕР»РµРµ СЂР°РЅРЅРёРµ (v3.1/v3.2/initial).
+
+## ?? C6 — UI в духе Apple/iOS
+- **UiTheme/Ui**: палитра iOS (system blue #007AFF, grouped bg #F2F2F7, separator #E5E5EA, semantic green/red/orange), шрифты SF Pro/Segoe UI, радиусы BTN/INPUT/CARD/DIALOG, тени/скругления.
+- **stylePrimary** > filled-кнопка с белым текстом; убраны ручные setForeground(BLACK) на «Отправить/Настройки/Новый чат».
+- **Экраны**: MainFrame (компактная кнопка «Настройки»), SidebarPanel, ChatView (синий пузырь пользователя, белая карточка ассистента), ChatChipsBar, Skill/ToolManagerView, Db/DbViewer, Settings* и диалоги — карточки с Ui.RoundedBorder.
+- **Смоук**: SmokeCoreTest.testIosTheme (палитра + белый текст filled-кнопки). 125/125 OK.

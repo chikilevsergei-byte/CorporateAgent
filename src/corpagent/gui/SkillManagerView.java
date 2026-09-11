@@ -35,8 +35,8 @@ public class SkillManagerView extends JPanel {
 
     public SkillManagerView(MainFrame frame) {
         this.frame = frame;
-        setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+                setLayout(new BorderLayout());
+        setBackground(Ui.BG);
         setBorder(new EmptyBorder(20, 24, 20, 24));
     }
 
@@ -44,7 +44,7 @@ public class SkillManagerView extends JPanel {
         removeAll();
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(Color.WHITE);
+        content.setBackground(Ui.BG);
 
         JPanel titleRow = Ui.header("🧠", "Менеджер навыков", Ui.FONT_TITLE);
         titleRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -54,8 +54,9 @@ public class SkillManagerView extends JPanel {
         // Список существующих навыков
         Map<String, Object> skills = frame.getStore().getSkills();
         if (!skills.isEmpty()) {
-            JLabel listHeader = new JLabel("Существующие навыки:");
-            listHeader.setFont(new Font("Segoe UI", Font.BOLD, 14));
+                        JLabel listHeader = new JLabel("Существующие навыки:");
+            listHeader.setFont(Ui.FONT_BOLD);
+            listHeader.setForeground(Ui.TEXT);
             content.add(listHeader);
             content.add(Box.createVerticalStrut(6));
             for (String name : skills.keySet()) {
@@ -64,26 +65,31 @@ public class SkillManagerView extends JPanel {
             content.add(Box.createVerticalStrut(12));
         }
 
-        content.add(new JLabel("Добавить / редактировать навык"));
+                JLabel formTitle = new JLabel("Добавить / редактировать навык");
+        formTitle.setFont(Ui.FONT_SMALL_BOLD);
+        formTitle.setForeground(Ui.TEXT_SECONDARY);
+        content.add(formTitle);
         content.add(Box.createVerticalStrut(6));
 
         JPanel form = new JPanel();
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBackground(Color.WHITE);
-        form.setBorder(BorderFactory.createLineBorder(new Color(209, 250, 229)));
+        form.setBackground(Ui.SURFACE);
+        form.setBorder(BorderFactory.createCompoundBorder(
+                new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1),
+                new EmptyBorder(14, 14, 14, 14)));
+        form.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        form.add(fieldLabel("Название навыка"));
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+                form.add(fieldLabel("Название навыка"));
+        Ui.styleField(nameField);
+        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         form.add(nameField);
         form.add(Box.createVerticalStrut(8));
         form.add(fieldLabel("Описание"));
-        descArea.setLineWrap(true);
-        descArea.setWrapStyleWord(true);
+        Ui.styleArea(descArea);
         form.add(new JScrollPane(descArea));
         form.add(Box.createVerticalStrut(8));
         form.add(fieldLabel("Код/шаблон (опционально)"));
-        codeArea.setLineWrap(true);
-        codeArea.setWrapStyleWord(true);
+        Ui.styleArea(codeArea);
         form.add(new JScrollPane(codeArea));
 
         content.add(form);
@@ -113,9 +119,10 @@ public class SkillManagerView extends JPanel {
     }
 
     private JPanel skillRow(String name) {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
-        row.setBackground(Color.WHITE);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
+                JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 2));
+        row.setBackground(Ui.SURFACE);
+        row.setBorder(new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         JLabel l = new JLabel(name);
         l.setFont(Ui.FONT_PLAIN);
         row.add(l);
@@ -182,9 +189,10 @@ public class SkillManagerView extends JPanel {
         JOptionPane.showMessageDialog(this, "Навык '" + name + "' сохранён!");
     }
 
-    private JLabel fieldLabel(String text) {
+        private JLabel fieldLabel(String text) {
         JLabel l = new JLabel(text);
-        l.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        l.setFont(Ui.FONT_SMALL);
+        l.setForeground(Ui.TEXT_SECONDARY);
         return l;
     }
 }

@@ -48,7 +48,7 @@ public class SettingsPanelDatabases extends JPanel {
         this.frame = frame;
         this.store = frame.getStore();
         setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+        setBackground(Ui.BG);
     }
 
     public void refresh() {
@@ -56,7 +56,7 @@ public class SettingsPanelDatabases extends JPanel {
 
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(Color.WHITE);
+        content.setBackground(Ui.BG);
         content.setBorder(new EmptyBorder(16, 16, 16, 16));
 
                 JPanel topRow = new JPanel(new BorderLayout());
@@ -151,7 +151,7 @@ public class SettingsPanelDatabases extends JPanel {
         text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
         text.setOpaque(false);
         JLabel nameL = new JLabel(name);
-        nameL.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        nameL.setFont(Ui.FONT_BOLD);
         nameL.setForeground(Ui.TEXT_DARK);
         text.add(nameL);
 

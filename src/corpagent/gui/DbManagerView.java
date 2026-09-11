@@ -45,8 +45,8 @@ public class DbManagerView extends JPanel {
 
     public DbManagerView(MainFrame frame) {
         this.frame = frame;
-        setLayout(new BorderLayout());
-        setBackground(Color.WHITE);
+                setLayout(new BorderLayout());
+        setBackground(Ui.BG);
         setBorder(new EmptyBorder(20, 24, 20, 24));
     }
 
@@ -54,7 +54,7 @@ public class DbManagerView extends JPanel {
         removeAll();
         JPanel content = new JPanel();
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
-        content.setBackground(Color.WHITE);
+        content.setBackground(Ui.BG);
 
         content.add(Ui.header("🗄️", "Создание базы данных", Ui.FONT_TITLE));
         content.add(Box.createVerticalStrut(6));
@@ -64,25 +64,31 @@ public class DbManagerView extends JPanel {
         content.add(hint);
         content.add(Box.createVerticalStrut(14));
 
-        JPanel form = new JPanel();
+                JPanel form = new JPanel();
         form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-        form.setBackground(Color.WHITE);
-        form.setBorder(BorderFactory.createLineBorder(new Color(209, 250, 229)));
+        form.setBackground(Ui.SURFACE);
+        form.setBorder(BorderFactory.createCompoundBorder(
+                new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1),
+                new EmptyBorder(14, 14, 14, 14)));
+        form.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
 
         form.add(fieldLabel("Название БД (латиница/цифры/_-)"));
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
+        Ui.styleField(nameField);
+        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         form.add(nameField);
         form.add(Box.createVerticalStrut(8));
 
         form.add(fieldLabel("Описание (для чего БД)"));
-        descArea.setLineWrap(true);
-        descArea.setWrapStyleWord(true);
+        Ui.styleArea(descArea);
         form.add(new JScrollPane(descArea));
         form.add(Box.createVerticalStrut(8));
 
         form.add(fieldLabel("SQL-схема (CREATE TABLE ...) — можно сгенерировать ИИ"));
         schemaArea.setLineWrap(false);
+        Ui.styleArea(schemaArea);
+        schemaArea.setLineWrap(false);
         schemaArea.setFont(new Font("Consolas", Font.PLAIN, 13));
+        schemaArea.setForeground(Ui.TEXT);
         form.add(new JScrollPane(schemaArea));
 
         content.add(form);
@@ -91,13 +97,9 @@ public class DbManagerView extends JPanel {
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         buttons.setOpaque(false);
 
-        JButton generate = new JButton("Сгенерировать схему ИИ");
+                JButton generate = new JButton("Сгенерировать схему ИИ");
         generate.setIcon(Ui.iconImage("✨", 16));
-        generate.setBackground(new Color(59, 130, 246));
-        generate.setForeground(Color.WHITE);
-        generate.setFocusPainted(false);
-        generate.setFont(Ui.FONT_PLAIN);
-        generate.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        Ui.styleSecondary(generate);
         generate.addActionListener(e -> generateSchema());
         buttons.add(generate);
 
@@ -137,7 +139,7 @@ public class DbManagerView extends JPanel {
             JOptionPane.showMessageDialog(this, "Сначала заполните описание БД.");
             return;
         }
-        statusLabel.setForeground(new Color(59, 130, 246));
+                statusLabel.setForeground(Ui.PRIMARY);
         statusLabel.setText("⏳ Генерация схемы ИИ...");
         final String desc = description;
         new SwingWorker<String, Void>() {
@@ -159,15 +161,15 @@ public class DbManagerView extends JPanel {
                 try {
                     String schema = get();
                     if (schema.startsWith("❌")) {
-                        statusLabel.setForeground(Color.RED);
+                        statusLabel.setForeground(Ui.ERROR);
                         statusLabel.setText(schema);
                         return;
                     }
-                    schemaArea.setText(schema.trim());
-                    statusLabel.setForeground(new Color(16, 185, 129));
+                                        schemaArea.setText(schema.trim());
+                    statusLabel.setForeground(Ui.SUCCESS);
                     statusLabel.setText("✅ Схема сгенерирована. Проверьте и нажмите «Создать БД».");
                 } catch (Exception ex) {
-                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setForeground(Ui.ERROR);
                     statusLabel.setText("❌ Ошибка: " + ex.getMessage());
                 }
             }
@@ -194,7 +196,7 @@ public class DbManagerView extends JPanel {
                 return;
             }
         }
-        statusLabel.setForeground(new Color(16, 185, 129));
+        statusLabel.setForeground(Ui.SUCCESS);
         statusLabel.setText("⏳ Создание БД...");
         final String fName = name;
         final String fSchema = schema;
@@ -210,7 +212,7 @@ public class DbManagerView extends JPanel {
                 try {
                     DatabaseManager.CreateDbResult r = get();
                     if (r.success) {
-                        statusLabel.setForeground(new Color(16, 185, 129));
+                        statusLabel.setForeground(Ui.SUCCESS);
                         statusLabel.setText("✅ БД создана: таблиц " + r.tables.size()
                                 + ", записей " + r.totalRecords + ".");
                         nameField.setText("");
@@ -222,13 +224,13 @@ public class DbManagerView extends JPanel {
                                         + "\nЗаписей: " + r.totalRecords);
                         frame.showDbViewer(fName);
                     } else {
-                        statusLabel.setForeground(Color.RED);
+                        statusLabel.setForeground(Ui.ERROR);
                         statusLabel.setText("❌ Ошибка: " + r.error);
                         JOptionPane.showMessageDialog(DbManagerView.this,
                                 "Не удалось создать БД:\n" + r.error);
                     }
                 } catch (Exception ex) {
-                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setForeground(Ui.ERROR);
                     statusLabel.setText("❌ Ошибка: " + ex.getMessage());
                 }
             }
@@ -236,10 +238,13 @@ public class DbManagerView extends JPanel {
     }
 
         private JPanel buildFilePanel() {
-        JPanel p = new JPanel();
+                JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
-        p.setBackground(new Color(245, 250, 245));
-        p.setBorder(BorderFactory.createLineBorder(new Color(167, 214, 195)));
+        p.setBackground(Ui.SURFACE);
+        p.setBorder(BorderFactory.createCompoundBorder(
+                new Ui.RoundedBorder(Ui.BORDER, Ui.RADIUS_CARD, 1),
+                new EmptyBorder(14, 14, 14, 14)));
+        p.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
 
         p.add(fieldLabel("Способ 2: создать БД из загруженных файлов"));
         p.add(Box.createVerticalStrut(6));
@@ -251,7 +256,7 @@ public class DbManagerView extends JPanel {
         p.add(h);
         p.add(Box.createVerticalStrut(8));
 
-        filesStatusLabel.setForeground(new Color(59, 130, 246));
+                filesStatusLabel.setForeground(Ui.PRIMARY);
         filesStatusLabel.setFont(Ui.FONT_SMALL);
         updateFilesLabelText();
         p.add(filesStatusLabel);
@@ -259,13 +264,9 @@ public class DbManagerView extends JPanel {
 
         JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         row.setOpaque(false);
-        JButton choose = new JButton("Выбрать файлы");
+                JButton choose = new JButton("Выбрать файлы");
         choose.setIcon(Ui.iconImage("📁", 16));
-        choose.setBackground(new Color(59, 130, 246));
-        choose.setForeground(Color.WHITE);
-        choose.setFocusPainted(false);
-        choose.setFont(Ui.FONT_PLAIN);
-        choose.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        Ui.styleSecondary(choose);
         choose.addActionListener(e -> chooseSourceFiles());
         row.add(choose);
 
@@ -333,7 +334,7 @@ public class DbManagerView extends JPanel {
                 return;
             }
         }
-        statusLabel.setForeground(new Color(16, 185, 129));
+        statusLabel.setForeground(Ui.SUCCESS);
         statusLabel.setText("⏳ Извлечение и анализ файлов...");
         final String fName = name;
         final String fDesc = description;
@@ -355,7 +356,7 @@ public class DbManagerView extends JPanel {
                 try {
                     DatabaseManager.CreateDbResult r = get();
                     if (r.success) {
-                        statusLabel.setForeground(new Color(16, 185, 129));
+                        statusLabel.setForeground(Ui.SUCCESS);
                         statusLabel.setText("✅ БД создана из файлов: таблиц " + r.tables.size()
                                 + ", записей " + r.totalRecords + ".");
                         nameField.setText("");
@@ -369,13 +370,13 @@ public class DbManagerView extends JPanel {
                                         + "\nЗаписей: " + r.totalRecords);
                         frame.showDbViewer(fName);
                     } else {
-                        statusLabel.setForeground(Color.RED);
+                        statusLabel.setForeground(Ui.ERROR);
                         statusLabel.setText("❌ Ошибка: " + r.error);
                         JOptionPane.showMessageDialog(DbManagerView.this,
                                 "Не удалось создать БД из файлов:\n" + r.error);
                     }
                 } catch (Exception ex) {
-                    statusLabel.setForeground(Color.RED);
+                    statusLabel.setForeground(Ui.ERROR);
                     statusLabel.setText("❌ Ошибка: " + ex.getMessage());
                 }
             }
