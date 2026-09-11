@@ -51,6 +51,7 @@ public class SmokeCoreTest {
         testChatContextMenu();
         testToggleSwitch();
         testRadioCard();
+        testFormRow();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -981,6 +982,23 @@ public class SmokeCoreTest {
                     "radioCard: setSelected(true) возвращает выбор");
         } catch (Exception e) {
             check(false, "testRadioCard: " + e);
+        }
+    }
+
+    // 24) UI-1.4: единый ряд формы — подпись + контрол, контрол растянут по ширине.
+    private static void testFormRow() {
+        try {
+            Class<?> ui = Class.forName("corpagent.gui.Ui");
+            Method formRow = ui.getMethod("formRow", String.class, java.awt.Component.class);
+            javax.swing.JTextField field = new javax.swing.JTextField("x");
+            Object panel = formRow.invoke(null, "Название", field);
+            check(panel instanceof javax.swing.JPanel, "formRow: возвращает JPanel");
+            check(field.getMaximumSize().width == Integer.MAX_VALUE,
+                    "formRow: контрол растянут по ширине (max width = MAX_VALUE)");
+            check(field.getMaximumSize().height >= 30,
+                    "formRow: разумная max-высота контрола (>=30)");
+        } catch (Exception e) {
+            check(false, "testFormRow: " + e);
         }
     }
 

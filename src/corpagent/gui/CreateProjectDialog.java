@@ -86,10 +86,7 @@ public class CreateProjectDialog extends JDialog {
         root.add(Box.createVerticalStrut(14));
 
         // Имя проекта
-        root.add(fieldLabel("Название проекта"));
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        nameField.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(nameField);
+        root.add(Ui.formRow("Название проекта", nameField));
         root.add(Box.createVerticalStrut(10));
 
         // R-P1.9.5: выбор источника БД проекта (UI-1.3: радио-карточки).

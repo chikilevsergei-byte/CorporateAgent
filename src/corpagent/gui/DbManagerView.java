@@ -72,10 +72,8 @@ public class DbManagerView extends JPanel {
                 new EmptyBorder(14, 14, 14, 14)));
         form.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
 
-        form.add(fieldLabel("Название БД (латиница/цифры/_-)"));
-        Ui.styleField(nameField);
-        nameField.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-        form.add(nameField);
+                Ui.styleField(nameField);
+        form.add(Ui.formRow("Название БД (латиница/цифры/_-)", nameField));
         form.add(Box.createVerticalStrut(8));
 
         form.add(fieldLabel("Описание (для чего БД)"));

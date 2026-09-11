@@ -83,8 +83,8 @@
       `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка. `testToggleSwitch`.
 - [x] **UI-1.3** Радио-карточки в `CreateProjectDialog` (источник БД) — `Ui.radioCard(...)`
       с tint-подложкой `PRIMARY_SOFT` и синей рамкой при выборе. Смоук: `testRadioCard`.
-- [ ] **UI-1.4** Whitespace/иерархия форм: единые `UiTheme.GAP_*` + `Ui.formRow(label, control)`;
-      применить в `CreateProjectDialog`, `DbManagerView`, `SettingsPanel*`.
+- [x] **UI-1.4** Whitespace/иерархия форм: единые `UiTheme.GAP_*` + `Ui.formRow(label, control)`;
+      применено в `CreateProjectDialog`, `DbManagerView`. Смоук: `testFormRow`.
 
 ### 🟠 Приоритет 2 — важно
 - [ ] **UI-2.1** Wizard «Создать проект» (3 шага: Основное → Источник БД → Роли/промпт):

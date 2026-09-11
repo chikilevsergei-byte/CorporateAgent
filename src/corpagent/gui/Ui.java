@@ -1,6 +1,7 @@
 package corpagent.gui;
 
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JFileChooser;
@@ -297,7 +298,7 @@ public final class Ui extends UiTheme {
 
     /**
      * UI-1.3: кликабельная «радио-карточка» — tint-подложка и синяя рамка при выборе.
-     * Возвращает панель; выбор отмечается внутри через {@link Card#setSelected(boolean)}.
+     * Возвращает панель; выбор отмечается внутри через {@link RadioCard#setSelected(boolean)}.
      * Радио скрыт (управление — клик по всей карточке).
      */
     public static RadioCard radioCard(String title, String subtitle, boolean selected) {
@@ -382,6 +383,36 @@ public final class Ui extends UiTheme {
                     new RoundedBorder(value ? PRIMARY : BORDER, RADIUS_BTN, value ? 2 : 1),
                     new javax.swing.border.EmptyBorder(10, 12, 10, 12)));
         }
+    }
+
+    // ==================== ФОРМЫ (UI-1.4) ====================
+
+    /**
+     * UI-1.4: единый ряд формы — подпись сверху + контрол снизу, с общим отступом
+     * {@link UiTheme#GAP_SM}. Уменьшает «магические» Box.createVerticalStrut по
+     * всему коду форм.
+     */
+    public static JPanel formRow(String label, java.awt.Component control) {
+        JPanel row = new JPanel();
+        row.setLayout(new javax.swing.BoxLayout(row, javax.swing.BoxLayout.Y_AXIS));
+        row.setOpaque(false);
+        row.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        if (label != null && !label.isEmpty()) {
+            JLabel l = new JLabel(label);
+            l.setFont(FONT_SMALL_BOLD);
+            l.setForeground(TEXT_SECONDARY);
+            l.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            row.add(l);
+            row.add(Box.createVerticalStrut(GAP_XS));
+        }
+        // Единая ширина ряда; высота — по предпочтительной (для полей/кнопок).
+        int maxH = control.getPreferredSize() != null ? control.getPreferredSize().height : 30;
+        control.setMaximumSize(new Dimension(Integer.MAX_VALUE, Math.max(maxH, 30)));
+        if (control instanceof javax.swing.JComponent) {
+            ((javax.swing.JComponent) control).setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+        }
+        row.add(control);
+        return row;
     }
 
     // ==================== СОВРЕМЕННЫЕ ТАБЫ ====================
