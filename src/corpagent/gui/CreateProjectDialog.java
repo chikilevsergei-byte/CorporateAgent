@@ -34,7 +34,7 @@ import java.util.Map;
  * не делается — используются только латинские символы; при вводе кириллицы
  * предлагается отдельно задать техническое имя БД).</p>
  */
-public class CreateProjectDialog extends JDialog {
+public class CreateProjectDialog extends BaseDialog {
 
     private final MainFrame frame;
     private final DataStore store;
@@ -287,7 +287,11 @@ public class CreateProjectDialog extends JDialog {
         root.add(statusLabel);
 
         root.add(Box.createVerticalGlue());
-        setContentPane(root);
+        // UI-2.4: единая скруглённая карточка диалога (BaseDialog) + закрытие по ESC.
+        JScrollPane wizardScroll = new JScrollPane(root);
+        wizardScroll.setBorder(null);
+        wizardScroll.getVerticalScrollBar().setUnitIncrement(16);
+        setCardContent(wizardScroll, null);
 
         // UI-2.1: стартовое состояние мастера — шаг 1.
         goStep(0);

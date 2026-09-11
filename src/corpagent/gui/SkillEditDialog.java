@@ -31,7 +31,7 @@ import java.util.Map;
  * Поля: название, иконка (выбор эмодзи), описание, системный промпт,
  * пример запроса, параметры (имя/тип/обязательность).
  */
-public class SkillEditDialog extends JDialog {
+public class SkillEditDialog extends BaseDialog {
 
     private static final String[] EMOJIS = {
             "🧠", "📊", "📈", "📉", "🗂️", "📋", "✅", "⚠️", "🚀", "💡",
@@ -106,10 +106,14 @@ public class SkillEditDialog extends JDialog {
         save.addActionListener(e -> saveSkill());
         buttons.add(save);
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.add(form, BorderLayout.CENTER);
+                JPanel root = new JPanel(new BorderLayout());
+        JScrollPane formScroll = new JScrollPane(form);
+        formScroll.setBorder(null);
+        formScroll.getVerticalScrollBar().setUnitIncrement(16);
+        root.add(formScroll, BorderLayout.CENTER);
         root.add(buttons, BorderLayout.SOUTH);
-        setContentPane(root);
+        // UI-2.4: единая скруглённая карточка диалога (BaseDialog) + закрытие по ESC.
+        setCardContent(root, null);
 
         if (editingName != null) {
             loadExisting();

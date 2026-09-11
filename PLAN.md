@@ -94,9 +94,10 @@
       статус, hover-подсветка).
 - [x] **UI-2.3** Кастомный слайдер (`Ui.styleSlider`/`SlimSliderUI` — заливка трека до бегунка);
       применён в `SettingsPanelModel`. Смоук: `testSlider`.
-- [ ] **UI-2.4** Единый компонент модалок: `BaseDialog extends JDialog` (`setUndecorated(true)` +
-      `RoundedShadowBorder` + ESC). Перевести `CreateProjectDialog`, `UpdateProjectDbDialog`,
-      `DbConnectDialog`, `SkillEditDialog`, `ToolEditDialog`, `DbCreateFromFilesDialog`.
+- [x] **UI-2.4** Единый компонент модалок: `BaseDialog extends JDialog` (`setUndecorated(true)` +
+      `RoundedShadowBorder` + закрытие по ESC + `buttonBar`). Переведены `SettingsDialog`,
+      `CreateProjectDialog`, `UpdateProjectDbDialog`, `DbConnectDialog`, `SkillEditDialog`,
+      `ToolEditDialog`, `DbCreateFromFilesDialog`. Смоук: `testBaseDialog`.
 
 ### 🟡 Приоритет 3 — желательно
 - [x] **UI-3.1** Toast-уведомления (`Toast`, стек, авто-скрытие 4с, пауза при hover, типы

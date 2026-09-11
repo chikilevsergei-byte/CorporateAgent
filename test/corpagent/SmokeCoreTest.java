@@ -55,6 +55,7 @@ public class SmokeCoreTest {
         testSlider();
         testWizardProgress();
         testToast();
+        testBaseDialog();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1117,6 +1118,37 @@ public class SmokeCoreTest {
             }
         }
         return n;
+    }
+
+    // 28) UI-2.4: BaseDialog — общая скруглённая рамка (RoundedShadowBorder) и панель кнопок.
+    //     Сам JDialog в headless не создаём (HeadlessException) — проверяем статические части.
+    private static void testBaseDialog() {
+        try {
+            Class<?> base = Class.forName("corpagent.gui.BaseDialog");
+            Class<?> borderCls = Class.forName("corpagent.gui.BaseDialog$RoundedShadowBorder");
+
+            // Рамка даёт ненулевые внешние отступы (тень/скругление).
+            Object border = borderCls.getConstructor().newInstance();
+            Method getInsets = borderCls.getMethod("getBorderInsets", java.awt.Component.class);
+            java.awt.Insets ins = (java.awt.Insets) getInsets.invoke(border, (Object) null);
+            check(ins != null && ins.top >= 0 && ins.bottom > 0,
+                    "RoundedShadowBorder: getBorderInsets задаёт тень (bottom>0)");
+
+            // buttonBar: собирает панель, кнопки добавлены по порядку.
+            Method buttonBar = base.getMethod("buttonBar", javax.swing.JComponent[].class);
+            javax.swing.JButton b1 = new javax.swing.JButton("Отмена");
+            javax.swing.JButton b2 = new javax.swing.JButton("Сохранить");
+            Object row = buttonBar.invoke(null, (Object) new javax.swing.JComponent[]{b1, b2});
+            check(row instanceof javax.swing.JPanel, "buttonBar: возвращает JPanel");
+            check(((javax.swing.JPanel) row).getComponentCount() == 2,
+                    "buttonBar: обе кнопки добавлены");
+
+            // BaseDialog является наследником JDialog (единая база модалок).
+            Class<?> jdialog = Class.forName("javax.swing.JDialog");
+            check(jdialog.isAssignableFrom(base), "BaseDialog extends JDialog");
+        } catch (Exception e) {
+            check(false, "testBaseDialog: " + e);
+        }
     }
 
     private static Object getStatic(Class<?> owner, String field) throws Exception {

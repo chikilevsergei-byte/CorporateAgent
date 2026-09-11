@@ -41,7 +41,7 @@ import java.util.Map;
  * Для SQLite выполняется реальное открытие файла; для остальных типов требуется
  * JDBC-драйвер в lib/ (если отсутствует — понятное сообщение).
  */
-public class DbConnectDialog extends JDialog {
+public class DbConnectDialog extends BaseDialog {
 
         /**
      * Поддерживается только SQLite (без JDBC-драйверов серверные типы не работают).
@@ -206,9 +206,10 @@ public class DbConnectDialog extends JDialog {
         buttons.add(save);
 
         JPanel root = new JPanel(new BorderLayout());
-        root.add(form, BorderLayout.CENTER);
+                root.add(form, BorderLayout.CENTER);
         root.add(buttons, BorderLayout.SOUTH);
-        setContentPane(root);
+        // UI-2.4: единая скруглённая карточка диалога (BaseDialog) + закрытие по ESC.
+        setCardContent(root, null);
 
         if (editingName != null) {
             loadExisting();

@@ -36,7 +36,7 @@ import java.awt.event.WindowEvent;
  * только за «оболочку» (полоса вкладок, карточка, кнопки) и координацию
  * загрузки/сохранения.</p>
  */
-public class SettingsDialog extends JDialog {
+public class SettingsDialog extends BaseDialog {
 
     private final MainFrame frame;
     private final Config config;
@@ -79,10 +79,9 @@ public class SettingsDialog extends JDialog {
         setSize(780, 580);
         setLocationRelativeTo(frame);
 
-        // Контент внутри скруглённой «карточки» с тенью
+        // UI-2.4: контент внутри скруглённой «карточки» с тенью (BaseDialog).
         JPanel content = new JPanel(new BorderLayout());
         content.setBackground(Ui.SURFACE);
-        content.setBorder(new RoundedShadowBorder());
 
         // Полоса вкладок
         JPanel tabBar = buildTabBar();
@@ -99,11 +98,7 @@ public class SettingsDialog extends JDialog {
 
         content.add(buildButtons(), BorderLayout.SOUTH);
 
-        JPanel root = new JPanel(new BorderLayout());
-        root.setBackground(new Color(0, 0, 0, 0));
-        root.setBorder(new EmptyBorder(16, 16, 16, 16));
-        root.add(content, BorderLayout.CENTER);
-        setContentPane(root);
+        setCardContent(content, null);
 
         // Загрузка текущих значений
         loadValues();
@@ -231,34 +226,5 @@ public class SettingsDialog extends JDialog {
 
         JOptionPane.showMessageDialog(this, "Настройки сохранены.");
         dispose();
-    }
-
-    // ==================== СКРУГЛЁННАЯ РАМКА С ТЕНЬЮ ====================
-
-    /** Рисует скруглённую рамку с мягкой тенью вокруг контента диалога. */
-    private static class RoundedShadowBorder extends javax.swing.border.AbstractBorder {
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public void paintBorder(Component c, Graphics g, int x, int y, int width, int height) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int r = Ui.RADIUS_DIALOG;
-            // Тень
-            g2.setColor(new Color(0, 0, 0, 30));
-            g2.fillRoundRect(x + 2, y + 4, width - 4, height - 4, r, r);
-            // Фон
-            g2.setColor(Ui.SURFACE);
-            g2.fillRoundRect(x, y, width - 4, height - 6, r, r);
-            // Рамка
-            g2.setColor(Ui.BORDER);
-            g2.drawRoundRect(x, y, width - 4, height - 6, r, r);
-            g2.dispose();
-        }
-
-        @Override
-        public java.awt.Insets getBorderInsets(Component c) {
-            return new java.awt.Insets(4, 4, 8, 4);
-        }
     }
 }

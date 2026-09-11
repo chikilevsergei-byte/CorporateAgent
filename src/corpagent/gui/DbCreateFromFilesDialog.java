@@ -34,7 +34,7 @@ import java.util.List;
  * ИИ по содержимому строит SQLite-схему (+ стартовые INSERT для табличных данных)
  * и создаёт реальный файл баз данных databases/&lt;имя&gt;.db.
  */
-public class DbCreateFromFilesDialog extends JDialog {
+public class DbCreateFromFilesDialog extends BaseDialog {
 
     private final MainFrame frame;
     private final DataStore store;
@@ -117,7 +117,11 @@ public class DbCreateFromFilesDialog extends JDialog {
         root.add(statusLabel);
 
         root.add(Box.createVerticalGlue());
-        setContentPane(root);
+        // UI-2.4: единая скруглённая карточка диалога (BaseDialog) + закрытие по ESC.
+        JScrollPane dlgScroll = new JScrollPane(root);
+        dlgScroll.setBorder(null);
+        dlgScroll.getVerticalScrollBar().setUnitIncrement(16);
+        setCardContent(dlgScroll, null);
     }
 
     public boolean isSaved() {

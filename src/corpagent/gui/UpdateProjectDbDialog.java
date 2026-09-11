@@ -36,7 +36,7 @@ import java.util.Map;
  * Записи, которые есть в БД проекта, но отсутствуют в источнике, попадают в секцию
  * «КОНФЛИКТЫ» — пользователь решает, удалять их или нет.</p>
  */
-public class UpdateProjectDbDialog extends JDialog {
+public class UpdateProjectDbDialog extends BaseDialog {
 
     private final MainFrame frame;
     private final DataStore store;
@@ -144,7 +144,11 @@ public class UpdateProjectDbDialog extends JDialog {
         root.add(Box.createVerticalStrut(6));
         root.add(statusLabel);
         root.add(Box.createVerticalGlue());
-        setContentPane(root);
+        // UI-2.4: единая скруглённая карточка диалога (BaseDialog) + закрытие по ESC.
+        JScrollPane dlgScroll = new JScrollPane(root);
+        dlgScroll.setBorder(null);
+        dlgScroll.getVerticalScrollBar().setUnitIncrement(16);
+        setCardContent(dlgScroll, null);
 
         // Заполняем список БД-источников (за исключением самой БД проекта и методологий).
         for (String db : store.enabledDatabases()) {
