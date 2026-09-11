@@ -61,6 +61,7 @@ public class SmokeCoreTest {
         testSkeletonLoader();
         testWelcomeView();
         testMessageBubble();
+        testBadgeIcon();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1308,6 +1309,40 @@ public class SmokeCoreTest {
             check(Boolean.FALSE.equals(isUser.invoke(aiMsg)), "MessageBubble: роль assistant");
         } catch (Exception e) {
             check(false, "testMessageBubble: " + e);
+        }
+    }
+
+    // 34) UI-4.3: Badge-иконка счётчика в ChatChipsBar — размеры и отрисовка (headless).
+    private static void testBadgeIcon() {
+        try {
+            Class<?> bar = Class.forName("corpagent.gui.ChatChipsBar");
+            Class<?> badge = Class.forName("corpagent.gui.ChatChipsBar$BadgeIcon");
+            java.lang.reflect.Constructor<?> ctor = badge.getDeclaredConstructor(int.class);
+            ctor.setAccessible(true);
+            Object icon = ctor.newInstance(3);
+            check(icon instanceof javax.swing.Icon, "BadgeIcon: реализует Icon");
+
+            Method w = badge.getMethod("getIconWidth");
+            Method h = badge.getMethod("getIconHeight");
+            int width1 = (Integer) w.invoke(icon);
+            int height = (Integer) h.invoke(icon);
+            check(height == 18, "BadgeIcon: высота 18");
+            check(width1 >= 18, "BadgeIcon: минимальная ширина >= 18");
+
+            // Ширина растёт с числом разрядов.
+            Object iconBig = ctor.newInstance(123);
+            check((Integer) w.invoke(iconBig) > width1,
+                    "BadgeIcon: шире для многозначного числа");
+
+            // paintIcon не падает на offscreen-изображении (headless-безопасно).
+            java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(64, 24,
+                    java.awt.image.BufferedImage.TYPE_INT_ARGB);
+            Method paint = badge.getMethod("paintIcon", java.awt.Component.class,
+                    java.awt.Graphics.class, int.class, int.class);
+            paint.invoke(icon, null, img.getGraphics(), 2, 2);
+            check(true, "BadgeIcon: paintIcon выполняется без ошибок");
+        } catch (Exception e) {
+            check(false, "testBadgeIcon: " + e);
         }
     }
 

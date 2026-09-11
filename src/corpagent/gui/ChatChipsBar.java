@@ -103,11 +103,61 @@ public class ChatChipsBar extends JPanel {
         dbCount = selectedDatabases.size();
         skillsCount = selectedSkills.size();
         toolsCount = selectedTools.size();
-        dbButton.setText(countSuffix("БД", dbCount));
-        skillsButton.setText(countSuffix("Навыки", skillsCount));
-        toolsButton.setText(countSuffix("Инструменты", toolsCount));
+        applyBadge(dbButton, "БД", dbCount);
+        applyBadge(skillsButton, "Навыки", skillsCount);
+        applyBadge(toolsButton, "Инструменты", toolsCount);
         revalidate();
         repaint();
+    }
+
+    /**
+     * UI-4.3: проставляет текст и badge-счётчик ({@code .tool-btn .badge} из прототипа) —
+     * синий круглый чип с числом выбранного, скрытый при нуле.
+     */
+    private static void applyBadge(JButton b, String base, int n) {
+        b.setText(base);
+        b.setIcon(n > 0 ? new BadgeIcon(n) : null);
+        // Иконка-badge располагается СПРАВА от текста.
+        b.setHorizontalTextPosition(javax.swing.SwingConstants.LEFT);
+        b.setIconTextGap(6);
+    }
+
+    /** Небольшая иконка-чип с числом на синем фоне (badge из прототипа). */
+    public static class BadgeIcon implements javax.swing.Icon {
+        private final int n;
+
+        BadgeIcon(int n) {
+            this.n = n;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return Math.max(18, 10 + String.valueOf(n).length() * 7);
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 18;
+        }
+
+        @Override
+        public void paintIcon(java.awt.Component c, java.awt.Graphics g, int x, int y) {
+            java.awt.Graphics2D g2 = (java.awt.Graphics2D) g.create();
+            g2.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                    java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getIconWidth();
+            int h = getIconHeight();
+            g2.setColor(Ui.PRIMARY);
+            g2.fillRoundRect(x, y, w, h, h, h);
+            g2.setColor(java.awt.Color.WHITE);
+            g2.setFont(Ui.FONT_SMALL_BOLD);
+            String label = String.valueOf(n);
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            int tx = x + (w - fm.stringWidth(label)) / 2;
+            int ty = y + (h - fm.getHeight()) / 2 + fm.getAscent();
+            g2.drawString(label, tx, ty);
+            g2.dispose();
+        }
     }
 
     /**
@@ -172,8 +222,9 @@ public class ChatChipsBar extends JPanel {
         store.saveAll();
     }
 
-    private String countSuffix(String base, int n) {
-        return n > 0 ? base + " (" + n + ")" : base;
+    /** Возвращает число выбранных БД — для смоук-теста. */
+    public int databaseCount() {
+        return dbCount;
     }
 
     private void prune(Set<String> selected, Map<String, Object> available) {
