@@ -272,6 +272,12 @@ public class UiTheme {
         return families[families.length - 1];
     }
 
+    /** Шрифт эмодзи заданного размера (или fallback, если эмодзи-шрифт недоступен). */
+    public static Font iconFont(int size) {
+        String fam = emojiFontAvailable() ? EMOJI_FONT : FONT;
+        return new Font(fam, Font.PLAIN, size);
+    }
+
     /** Проверяет, доступен ли шрифт эмодзи в системе. */
     public static boolean emojiFontAvailable() {
         for (String name : GraphicsEnvironment.getLocalGraphicsEnvironment()

@@ -265,39 +265,47 @@ public class SidebarPanel extends JPanel {
     private void showProjectMenu(String projectId, String projectName) {
         Map<String, Object> project = frame.getStore().getProject(projectId);
         String db = project == null ? "" : Json.str(project, "db", "");
-        String[] options = {"Обновить БД проекта…", "Удалить проект", "Отмена"};
-        int choice = JOptionPane.showOptionDialog(this,
-                "Проект: " + projectName + "\nБД проекта: " + db,
-                "Меню проекта", JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE,
-                null, options, options[2]);
-        if (choice == 0) {
-            // R-P1.9.6: ИИ-синхронизация БД проекта из другого источника.
-            if (db == null || db.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "У проекта не задана БД.",
-                        "Обновить БД проекта", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            UpdateProjectDbDialog dlg =
-                    new UpdateProjectDbDialog(frame, frame.getStore(), projectId, projectName, db);
-            dlg.setVisible(true);
-            if (dlg.isUpdated()) {
-                refresh();
-            }
-        } else if (choice == 1) {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                    "Удалить проект '" + projectName + "' вместе с его чатами?\n"
-                            + "Файл БД проекта ('" + db + "') останется в списке баз данных.",
-                    "Подтверждение", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                List<String> removed = frame.getStore().removeProject(projectId);
-                if (frame.getCurrentChatId() != null && removed.contains(frame.getCurrentChatId())) {
-                    frame.setCurrentChatId(null);
-                }
-                frame.getStore().saveAll();
-                refresh();
-                frame.getChatView().refresh();
-            }
+                // UI-1.1: кастомное контекстное меню проекта вместо JOptionPane.showOptionDialog.
+        ChatContextMenu menu = new ChatContextMenu("📁", projectName
+                + (db == null || db.isEmpty() ? "" : " — БД: " + db));
+        menu.addAction("🔄", "Обновить БД проекта…",
+                () -> updateProjectDb(projectId, projectName, db));
+        menu.addAction("🗑️", "Удалить проект", true,
+                () -> deleteProject(projectId, projectName, db));
+        menu.showAt(this, getWidth() / 2, 80);
+    }
+
+    /** R-P1.9.6: запускает диалог ИИ-синхронизации БД проекта из другого источника. */
+    private void updateProjectDb(String projectId, String projectName, String db) {
+        if (db == null || db.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "У проекта не задана БД.",
+                    "Обновить БД проекта", JOptionPane.WARNING_MESSAGE);
+            return;
         }
+        UpdateProjectDbDialog dlg =
+                new UpdateProjectDbDialog(frame, frame.getStore(), projectId, projectName, db);
+        dlg.setVisible(true);
+        if (dlg.isUpdated()) {
+            refresh();
+        }
+    }
+
+    /** Удаляет проект вместе с его чатами (файл БД проекта остаётся в списке баз). */
+    private void deleteProject(String projectId, String projectName, String db) {
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Удалить проект '" + projectName + "' вместе с его чатами?\n"
+                        + "Файл БД проекта ('" + db + "') останется в списке баз данных.",
+                "Подтверждение", JOptionPane.YES_NO_OPTION);
+        if (confirm != JOptionPane.YES_OPTION) {
+            return;
+        }
+        List<String> removed = frame.getStore().removeProject(projectId);
+        if (frame.getCurrentChatId() != null && removed.contains(frame.getCurrentChatId())) {
+            frame.setCurrentChatId(null);
+        }
+        frame.getStore().saveAll();
+        refresh();
+        frame.getChatView().refresh();
     }
 
     private JPanel createChatRow(String chatId, Map<String, Object> chatRec) {
@@ -329,15 +337,35 @@ public class SidebarPanel extends JPanel {
         left.add(name);
         row.add(left, BorderLayout.CENTER);
 
-        JButton menu = new JButton("...");
-        menu.setToolTipText("Chat menu");
+                JButton menu = new JButton("...");
+        menu.setToolTipText("Меню чата");
         menu.setBorderPainted(false);
         menu.setFocusPainted(false);
         menu.setContentAreaFilled(false);
         menu.setOpaque(false);
         menu.setFont(Ui.FONT_SMALL_BOLD);
         menu.setForeground(Ui.TEXT_MUTED);
-        menu.addActionListener(e -> showChatMenu(chatId, title));
+                menu.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        menu.addActionListener(e -> showChatMenu(menu, 0, menu.getHeight(), chatId, title));
+
+        // UI-1.1: правый клик по строке чата открывает то же контекстное меню.
+        row.putClientProperty("chatId", chatId);
+        row.putClientProperty("chatTitle", title);
+        row.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showChatMenu(row, e.getX(), e.getY());
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) {
+                    showChatMenu(row, e.getX(), e.getY());
+                }
+            }
+        });
 
         boolean pinned = chatRec != null && Boolean.TRUE.equals(chatRec.get("pinned"));
         JButton pinBtn = new JButton("pin");
@@ -361,37 +389,67 @@ public class SidebarPanel extends JPanel {
         return row;
     }
 
-        private void showChatMenu(String chatId, String currentTitle) {
-        String[] options = {"Переименовать", "Переместить в проект…", "Удалить", "Отмена"};
-        int choice = JOptionPane.showOptionDialog(this, "Чат: " + currentTitle, "Меню чата",
-                JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, options, options[3]);
-        if (choice == 0) {
-            String newName = JOptionPane.showInputDialog(this, "Новое имя чата:", currentTitle);
-            if (newName != null && !newName.trim().isEmpty()) {
-                Map<String, Object> chat = frame.getStore().getChat(chatId);
-                if (chat != null) {
-                    chat.put("title", newName.trim());
-                    chat.put("updated", Utils.nowIso());
-                    frame.getStore().saveAll();
-                    refresh();
-                    frame.getChatView().refresh();
+            /**
+             * UI-1.1: кастомное контекстное меню чата (ChatContextMenu) вместо
+             * {@code JOptionPane.showOptionDialog}. Пункты: Переименовать / Переместить в
+             * проект… / Pin / Удалить (danger).
+             *
+             * @param invoker компонент-источник, у которого показывается popup (строка чата)
+             */
+            void showChatMenu(Component invoker, int x, int y) {
+                if (!(invoker instanceof javax.swing.JComponent)) {
+                    return;
                 }
+                javax.swing.JComponent jc = (javax.swing.JComponent) invoker;
+                String chatId = (String) jc.getClientProperty("chatId");
+                String title = (String) jc.getClientProperty("chatTitle");
+                showChatMenu(invoker, x, y, chatId, title);
             }
-        } else if (choice == 1) {
-            // R-P1.9.4: перенос обычного чата в проект по правилам проекта.
-            moveChatToProject(chatId, currentTitle);
-        } else if (choice == 2) {
-            int confirm = JOptionPane.showConfirmDialog(this, "Удалить чат '" + currentTitle + "'?",
-                    "Подтверждение", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                frame.getStore().removeChat(chatId);
-                if (chatId.equals(frame.getCurrentChatId())) {
-                    frame.setCurrentChatId(null);
+
+            /** Строит и показывает меню чата для заданных id/заголовка. */
+            void showChatMenu(Component invoker, int x, int y, String chatId, String title) {
+                if (chatId == null) {
+                    return;
                 }
+                Map<String, Object> chat = frame.getStore().getChat(chatId);
+                boolean pinned = chat != null && Boolean.TRUE.equals(chat.get("pinned"));
+
+                ChatContextMenu menu = new ChatContextMenu("💬", "Чат: " + title);
+                menu.addAction("✏️", "Переименовать", () -> renameChat(chatId, title));
+                menu.addAction("📁", "Переместить в проект…", () -> moveChatToProject(chatId, title));
+                menu.addAction("📌", pinned ? "Открепить" : "Закрепить",
+                        () -> togglePin(chatId, pinned));
+                menu.addAction("🗑️", "Удалить", true, () -> deleteChat(chatId, title));
+                menu.showAt(invoker, x, y);
+            }
+
+    /** Переименование чата (диалог ввода имени). */
+    private void renameChat(String chatId, String currentTitle) {
+        String newName = JOptionPane.showInputDialog(this, "Новое имя чата:", currentTitle);
+        if (newName != null && !newName.trim().isEmpty()) {
+            Map<String, Object> chat = frame.getStore().getChat(chatId);
+            if (chat != null) {
+                chat.put("title", newName.trim());
+                chat.put("updated", Utils.nowIso());
                 frame.getStore().saveAll();
                 refresh();
                 frame.getChatView().refresh();
             }
+        }
+    }
+
+    /** Удаление чата с подтверждением. */
+    private void deleteChat(String chatId, String currentTitle) {
+        int confirm = JOptionPane.showConfirmDialog(this, "Удалить чат '" + currentTitle + "'?",
+                "Подтверждение", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            frame.getStore().removeChat(chatId);
+            if (chatId.equals(frame.getCurrentChatId())) {
+                frame.setCurrentChatId(null);
+            }
+            frame.getStore().saveAll();
+            refresh();
+            frame.getChatView().refresh();
         }
     }
 

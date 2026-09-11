@@ -48,6 +48,7 @@ public class SmokeCoreTest {
         testUiTokens();
         testActionIcon();
         testThemeSwitch();
+        testChatContextMenu();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -890,6 +891,39 @@ public class SmokeCoreTest {
                     "applyTheme(green): светлая палитра восстановлена (обратимость)");
         } catch (Exception e) {
             check(false, "testThemeSwitch: " + e);
+        }
+    }
+
+    // 21) UI-1.1: кастомное контекстное меню чата — состав пунктов, danger-стиль,
+    //     наличие actionCount()/actionLabelAt()/actionIsDangerAt() без запуска GUI.
+    private static void testChatContextMenu() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.ChatContextMenu");
+            Object menu = cls.getConstructor(String.class, String.class)
+                    .newInstance("💬", "Чат: Тест");
+            Method add = cls.getMethod("addAction", String.class, String.class, Runnable.class);
+
+            add.invoke(menu, "✏️", "Переименовать", (Runnable) () -> { });
+            add.invoke(menu, "📁", "Переместить в проект…", (Runnable) () -> { });
+            Method addDanger = cls.getMethod("addAction", String.class, String.class,
+                    boolean.class, Runnable.class);
+            addDanger.invoke(menu, "🗑️", "Удалить", true, (Runnable) () -> { });
+
+            Method count = cls.getMethod("actionCount");
+            Method labelAt = cls.getMethod("actionLabelAt", int.class);
+            Method dangerAt = cls.getMethod("actionIsDangerAt", int.class);
+
+            check(((Integer) count.invoke(menu)) == 3, "ChatContextMenu: 3 пункта меню");
+            check("Переименовать".equals(labelAt.invoke(menu, 0)),
+                    "ChatContextMenu: пункт 0 = Переименовать");
+            check("Переместить в проект…".equals(labelAt.invoke(menu, 1)),
+                    "ChatContextMenu: пункт 1 = Переместить в проект…");
+            check(Boolean.FALSE.equals(dangerAt.invoke(menu, 0)),
+                    "ChatContextMenu: обычный пункт не danger");
+            check(Boolean.TRUE.equals(dangerAt.invoke(menu, 2)),
+                    "ChatContextMenu: пункт Удалить помечен danger");
+        } catch (Exception e) {
+            check(false, "testChatContextMenu: " + e);
         }
     }
 

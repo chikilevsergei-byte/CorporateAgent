@@ -64,7 +64,7 @@
 ### ⚙️ Сквозные (фундамент, делать первыми)
 - [x] **UI-0.1** Расширить `UiTheme`: spacing (`GAP_XS..GAP_2XL`), шрифты `FONT_XL/2XL`,
       `RADIUS_XL/2XL`, хелпер кликабельного курсора. Смоук: `testUiTokens`.
-- [ ] **UI-0.2** Реальный Dark Mode: переключение палитры из `SettingsPanelInterface`
+- [x] **UI-0.2** Реальный Dark Mode: переключение палитры из `SettingsPanelInterface`
       без перезапуска (сейчас тема сохраняется, но палитра фиксирована).
 - [x] **UI-0.3** Общий хелпер иконок действий (`Ui.actionIcon(emoji)`) — единый размер/отступ.
       `UiTheme.ACTION_ICON_SIZE/GAP` + `actionIcon(emoji[,size])` + `withActionIcon(btn, emoji)`;
@@ -74,10 +74,10 @@
       не ломает нативный resize/снап Windows.
 
 ### 🔴 Приоритет 1 — критично (быстрый UX-выигрыш)
-- [ ] **UI-1.1** Кастомное контекстное меню чата/проекта (замена `JOptionPane.showOptionDialog`
+- [x] **UI-1.1** Кастомное контекстное меню чата/проекта (замена `JOptionPane.showOptionDialog`
       в `SidebarPanel.showChatMenu`/`showProjectMenu`): новый `ChatContextMenu` (`JPopupMenu`) —
       иконка-шапка, пункты (Переименовать / Переместить в проект… / Pin / Удалить), `danger`-стиль.
-      DoD: компиляция + смоук состава пунктов.
+      DoD: компиляция + смоук состава пунктов. `testChatContextMenu`.
 - [ ] **UI-1.2** Toggle-свитч (кастомный `ToggleSwitch`): трек iPad-стиль, бегунок с тенью,
       анимация Timer. Применить в `SettingsPanelInterface` (3 чекбокса), `ChatChipsBar.showPicker`,
       `SettingsPanelDatabases`. DoD: смоук расчёта позиции бегунка.
