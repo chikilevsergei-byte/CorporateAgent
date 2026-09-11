@@ -119,13 +119,10 @@ public class SettingsPanelTools extends JPanel {
         list.setOpaque(false);
 
         Map<String, Object> tools = store.getTools();
-        if (tools.isEmpty()) {
-            JLabel empty = new JLabel("Инструментов пока нет.");
-            empty.setFont(Ui.FONT_SMALL);
-            empty.setForeground(Ui.TEXT_MUTED);
-            empty.setBorder(new EmptyBorder(8, 14, 8, 14));
-            empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-            list.add(empty);
+                if (tools.isEmpty()) {
+            // UI-3.5: пустое состояние списка инструментов.
+            list.add(new EmptyState("🔧", "Инструментов пока нет",
+                    "Нажмите «Новый инструмент», чтобы добавить первый"));
         } else {
             for (Map.Entry<String, Object> e : tools.entrySet()) {
                 list.add(toolRow(e.getKey(), Json.asMap(e.getValue())));

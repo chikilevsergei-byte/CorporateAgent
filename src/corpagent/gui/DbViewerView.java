@@ -56,12 +56,13 @@ public class DbViewerView extends JPanel {
     public void refresh() {
         removeAll();
         String dbName = frame.getViewingDb();
-        if (dbName == null) {
-                        JLabel empty = new JLabel("Выберите базу данных в боковой панели.");
-            empty.setFont(Ui.FONT_PLAIN);
-            empty.setForeground(Ui.TEXT_SECONDARY);
-            empty.setHorizontalAlignment(JLabel.CENTER);
-            add(empty, BorderLayout.CENTER);
+                if (dbName == null) {
+            // UI-3.5: пустое состояние — БД не выбрана.
+            JPanel wrap = new JPanel(new BorderLayout());
+            wrap.setBackground(Ui.BG);
+            wrap.add(new EmptyState("🗄️", "База данных не выбрана",
+                    "Выберите БД в боковой панели, чтобы просмотреть таблицы"), BorderLayout.NORTH);
+            add(wrap, BorderLayout.CENTER);
             revalidate();
             repaint();
             return;
@@ -69,11 +70,12 @@ public class DbViewerView extends JPanel {
 
         Map<String, Object> dbInfo = frame.getStore().getDatabase(dbName);
         if (dbInfo == null) {
-                        JLabel empty = new JLabel("База данных '" + dbName + "' не найдена.");
-            empty.setFont(Ui.FONT_PLAIN);
-            empty.setForeground(Ui.TEXT_SECONDARY);
-            empty.setHorizontalAlignment(JLabel.CENTER);
-            add(empty, BorderLayout.CENTER);
+            // UI-3.5: пустое состояние — БД не найдена.
+            JPanel wrap = new JPanel(new BorderLayout());
+            wrap.setBackground(Ui.BG);
+            wrap.add(new EmptyState("⚠️", "База данных «" + dbName + "» не найдена",
+                    "Возможно, файл был перемещён или удалён"), BorderLayout.NORTH);
+            add(wrap, BorderLayout.CENTER);
             revalidate();
             repaint();
             return;

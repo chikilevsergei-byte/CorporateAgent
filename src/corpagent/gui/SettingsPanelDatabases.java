@@ -108,11 +108,10 @@ public class SettingsPanelDatabases extends JPanel {
                 sqliteDbs.put(e.getKey(), e.getValue());
             }
         }
-        if (sqliteDbs.isEmpty()) {
-            JLabel empty = new JLabel("Пока нет подключённых БД. Нажмите «Добавить БД», чтобы подключить первую.");
-            empty.setFont(Ui.FONT_PLAIN);
-            empty.setForeground(Ui.TEXT_GRAY);
-            content.add(empty);
+                if (sqliteDbs.isEmpty()) {
+            // UI-3.5: пустое состояние списка БД.
+            content.add(new EmptyState("🗄️", "Пока нет подключённых БД",
+                    "Нажмите «Добавить БД», чтобы подключить первую"));
         } else {
             for (Map.Entry<String, Object> e : sqliteDbs.entrySet()) {
                 content.add(dbCard(e.getKey(), Json.asMap(e.getValue())));

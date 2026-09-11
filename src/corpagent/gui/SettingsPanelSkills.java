@@ -116,13 +116,10 @@ public class SettingsPanelSkills extends JPanel {
         list.setOpaque(false);
 
         Map<String, Object> skills = store.getSkills();
-        if (skills.isEmpty()) {
-            JLabel empty = new JLabel("Навыков пока нет.");
-            empty.setFont(Ui.FONT_SMALL);
-            empty.setForeground(Ui.TEXT_MUTED);
-            empty.setBorder(new EmptyBorder(8, 14, 8, 14));
-            empty.setAlignmentX(Component.LEFT_ALIGNMENT);
-            list.add(empty);
+                if (skills.isEmpty()) {
+            // UI-3.5: пустое состояние списка навыков.
+            list.add(new EmptyState("🧠", "Навыков пока нет",
+                    "Нажмите «Новый навык», чтобы добавить первый"));
         } else {
             for (Map.Entry<String, Object> e : skills.entrySet()) {
                 list.add(skillRow(e.getKey(), Json.asMap(e.getValue())));

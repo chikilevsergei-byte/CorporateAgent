@@ -128,8 +128,10 @@ public class SidebarPanel extends JPanel {
     private void refreshChats() {
         chatListPanel.removeAll();
         List<Map.Entry<String, Map<String, Object>>> chats = frame.getStore().sortedChats();
-        if (chats.isEmpty()) {
-            chatListPanel.add(emptyLabel("Нет чатов"));
+                if (chats.isEmpty()) {
+            // UI-3.5: пустое состояние вместо серой строки.
+            chatListPanel.add(new EmptyState("💬", "Пока нет чатов",
+                    "Создайте проект или новый чат кнопкой выше"));
         } else {
             // R-P0.2 / R-P1.5: чаты группируются по проекту (папка-заголовок + чаты-роли).
             // Чаты без проекта идут в общий раздел «Без проекта».
@@ -514,16 +516,9 @@ public class SidebarPanel extends JPanel {
             return;
         }
         c.put("pinned", Boolean.valueOf(!currentlyPinned));
-        frame.getStore().saveAll();
+                frame.getStore().saveAll();
         refresh();
         frame.getChatView().refresh();
-    }
-
-            private JLabel emptyLabel(String text) {
-        JLabel l = new JLabel(text);
-        l.setForeground(Ui.TEXT_MUTED);
-        l.setFont(Ui.FONT_SMALL);
-        return l;
     }
 
     /**

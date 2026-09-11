@@ -56,6 +56,7 @@ public class SmokeCoreTest {
         testWizardProgress();
         testToast();
         testBaseDialog();
+        testEmptyState();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1148,6 +1149,30 @@ public class SmokeCoreTest {
             check(jdialog.isAssignableFrom(base), "BaseDialog extends JDialog");
         } catch (Exception e) {
             check(false, "testBaseDialog: " + e);
+        }
+    }
+
+    // 29) UI-3.5: EmptyState — иконка-глиф, заголовок и подсказка (headless-безопасно).
+    private static void testEmptyState() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.EmptyState");
+            java.lang.reflect.Constructor<?> ctor =
+                    cls.getConstructor(String.class, String.class, String.class);
+            Object es = ctor.newInstance("💬", "Пока нет чатов", "Создайте проект");
+            check(es instanceof javax.swing.JPanel, "EmptyState: JPanel");
+
+            Method titleText = cls.getMethod("titleText");
+            Method hintText = cls.getMethod("hintText");
+            check("Пока нет чатов".equals(titleText.invoke(es)), "EmptyState: заголовок сохранён");
+            check("Создайте проект".equals(hintText.invoke(es)), "EmptyState: подсказка сохранена");
+
+            // Подсказка необязательна: null не ломает конструктор.
+            Object es2 = ctor.newInstance("🗄️", "Пусто", null);
+            check(es2 instanceof javax.swing.JPanel, "EmptyState: null-подсказка допустима");
+            check(countLabels((javax.swing.JPanel) es2) >= 2,
+                    "EmptyState: иконка-глиф + заголовок (>=2 JLabel)");
+        } catch (Exception e) {
+            check(false, "testEmptyState: " + e);
         }
     }
 
