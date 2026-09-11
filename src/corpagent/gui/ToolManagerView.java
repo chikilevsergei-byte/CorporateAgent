@@ -182,7 +182,8 @@ public class ToolManagerView extends JPanel {
         codeArea.setText("");
         refresh();
         frame.refreshSidebar();
-        JOptionPane.showMessageDialog(this, "Инструмент '" + name + "' сохранён!");
+        Toast.success(javax.swing.SwingUtilities.getWindowAncestor(this),
+                "Сохранено", "Инструмент «" + name + "» обновлён");
     }
 
         private JLabel fieldLabel(String text) {

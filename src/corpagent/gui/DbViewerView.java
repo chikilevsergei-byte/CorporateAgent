@@ -344,7 +344,8 @@ public class DbViewerView extends JPanel {
         if (path != null) {
             frame.getStore().addDbLog(dbName, "Бэкап", path);
             statusLabel.setText("✅ Бэкап создан: " + path);
-            JOptionPane.showMessageDialog(this, "Бэкап создан:\n" + path);
+            Toast.success(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Бэкап создан", path);
             refresh();
         } else {
             statusLabel.setText("❌ Не удалось создать бэкап.");

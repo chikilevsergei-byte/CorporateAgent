@@ -99,8 +99,10 @@
       `DbConnectDialog`, `SkillEditDialog`, `ToolEditDialog`, `DbCreateFromFilesDialog`.
 
 ### 🟡 Приоритет 3 — желательно
-- [ ] **UI-3.1** Toast-уведомления (`Toast`, авто-скрытие, типы) вместо информационных
-      `JOptionPane.showMessageDialog` (confirm/input оставить).
+- [x] **UI-3.1** Toast-уведомления (`Toast`, стек, авто-скрытие 4с, пауза при hover, типы
+      success/error/warning/info) вместо информационных `JOptionPane.showMessageDialog`
+      (confirm/input оставлены). Внедрено: сохранение навыка/инструмента, бэкап/восстановление,
+      пресет-защита, создание проекта, приветственный тост при старте. Смоук: `testToast`.
 - [ ] **UI-3.2** Кастомный File Picker (drag&drop, `TransferHandler`) вместо `JFileChooser`.
 - [ ] **UI-3.3** Анимация открытия модалок (`BaseDialog`).
 - [ ] **UI-3.4** Skeleton loaders для долгих операций (генерация схемы, upsert-план).

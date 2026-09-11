@@ -322,9 +322,8 @@ public class SettingsPanelTools extends JPanel {
         Map<String, Object> tool = Json.asMap(store.getTools().get(editingName));
         // P1.2: защита пресет-инструментов от удаления
         if (PresetLoader.isPresetTool(tool)) {
-            JOptionPane.showMessageDialog(this,
-                    "Этот инструмент предустановлен и не может быть удалён.",
-                    "Пресет", JOptionPane.INFORMATION_MESSAGE);
+            Toast.warning(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Пресет", "Этот инструмент предустановлен и не может быть удалён.");
             return;
         }
         int c = JOptionPane.showConfirmDialog(this, "Удалить инструмент '" + editingName + "'?",

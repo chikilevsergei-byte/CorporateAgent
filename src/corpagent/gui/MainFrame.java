@@ -305,18 +305,16 @@ public class MainFrame extends JFrame {
     public void createProject() {
         CreateProjectDialog dialog = new CreateProjectDialog(this, store);
         dialog.setVisible(true);
-        if (dialog.isCreated()) {
+                if (dialog.isCreated()) {
             sidebar.refresh();
             Map<String, Object> project = store.getProject(dialog.getCreatedProjectId());
             String db = project == null ? "" : Json.str(project, "db", "");
-            String msg = "Проект создан!\n\n"
-                    + "База данных проекта: " + db + "\n"
-                    + "Созданные чаты-роли: " + (project == null ? ""
-                            : String.valueOf(Json.arr(project, "chat_roles") == null
-                                    ? 0 : Json.arr(project, "chat_roles").size()))
-                    + "\n\nВыберите нужный чат в списке «ЧАТЫ» слева.";
-            javax.swing.JOptionPane.showMessageDialog(this, msg,
-                    "Проект создан", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            int roles = (project == null || Json.arr(project, "chat_roles") == null)
+                    ? 0 : Json.arr(project, "chat_roles").size();
+            // UI-3.1: итог создания проекта показываем тостом вместо модального диалога.
+            Toast.success(this, "Проект создан",
+                    "БД: " + db + " · рабочих чатов: " + roles
+                            + ". Выберите чат в списке «ЧАТЫ» слева.");
         }
     }
 
@@ -371,7 +369,17 @@ public class MainFrame extends JFrame {
         showChat();
     }
 
-    public void refreshSidebar() {
+        public void refreshSidebar() {
         sidebar.refresh();
+    }
+
+    /**
+     * UI-3.1: приветственный тост при старте (перенос из прототипа:
+     * {@code setTimeout(showToast(...), 500)}). Вызывать после {@code setVisible(true)},
+     * чтобы позиция окна уже была известна.
+     */
+    public void showWelcomeToast() {
+        Toast.info(this, "Добро пожаловать!",
+                "CorporateAgent v3 " + VERSION + " в стиле macOS готов к работе");
     }
 }

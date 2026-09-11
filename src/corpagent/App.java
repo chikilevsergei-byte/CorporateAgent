@@ -53,8 +53,10 @@ public class App {
                     } catch (Exception ignored) {
                         // не критично — компоненты задают шрифты сами через Ui.FONT_*
                     }
-                    MainFrame frame = new MainFrame(agent, store, dbManager, fileCreator, baseDir, config, settings);
+                                        MainFrame frame = new MainFrame(agent, store, dbManager, fileCreator, baseDir, config, settings);
                     frame.setVisible(true);
+                    // UI-3.1: приветственный тост после показа окна.
+                    frame.showWelcomeToast();
                 }
             });
         } catch (Exception e) {

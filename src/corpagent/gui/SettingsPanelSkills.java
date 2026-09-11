@@ -308,9 +308,8 @@ public class SettingsPanelSkills extends JPanel {
         Map<String, Object> skill = Json.asMap(store.getSkills().get(editingName));
         // P1.1: защита пресет-навыков от удаления
         if (PresetLoader.isPresetSkill(skill)) {
-            JOptionPane.showMessageDialog(this,
-                    "Этот навык предустановлен и не может быть удалён.",
-                    "Пресет", JOptionPane.INFORMATION_MESSAGE);
+            Toast.warning(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Пресет", "Этот навык предустановлен и не может быть удалён.");
             return;
         }
         int c = JOptionPane.showConfirmDialog(this, "Удалить навык '" + editingName + "'?",

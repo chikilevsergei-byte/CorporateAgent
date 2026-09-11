@@ -163,9 +163,8 @@ public class SettingsPanelInterface extends JPanel {
         String backupsDir = baseDir + java.io.File.separator + "backups";
         try {
             String backupPath = BackupManager.createBackup(baseDir, backupsDir);
-            JOptionPane.showMessageDialog(this,
-                    "Бэкап создан:\n" + backupPath,
-                    "Бэкап", JOptionPane.INFORMATION_MESSAGE);
+            Toast.success(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Бэкап создан", backupPath);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     "Ошибка создания бэкапа:\n" + ex.getMessage(),
@@ -193,10 +192,8 @@ public class SettingsPanelInterface extends JPanel {
         if (confirm != JOptionPane.YES_OPTION) return;
         try {
             BackupManager.restoreBackup(frame.getBaseDir(), backupFile.getAbsolutePath());
-            JOptionPane.showMessageDialog(this,
-                    "Данные восстановлены из бэкапа.\n" +
-                    "Перезапустите приложение для применения изменений.",
-                    "Восстановление", JOptionPane.INFORMATION_MESSAGE);
+            Toast.success(javax.swing.SwingUtilities.getWindowAncestor(this),
+                    "Восстановление", "Данные восстановлены. Перезапустите приложение.");
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,
                     "Ошибка восстановления:\n" + ex.getMessage(),

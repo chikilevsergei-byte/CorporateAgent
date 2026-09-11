@@ -54,6 +54,7 @@ public class SmokeCoreTest {
         testFormRow();
         testSlider();
         testWizardProgress();
+        testToast();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1053,6 +1054,69 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testWizardProgress: " + e);
         }
+    }
+
+    // 27) UI-3.1: Toast — типы, семантические цвета акцента, авто-скрытие 4с,
+    //     сборка панели без показа окна (headless-безопасно).
+    private static void testToast() {
+        try {
+            Class<?> toast = Class.forName("corpagent.gui.Toast");
+            Class<?> typeCls = Class.forName("corpagent.gui.Toast$Type");
+
+            // Enum типов содержит 4 значения.
+            Object[] types = typeCls.getEnumConstants();
+            check(types != null && types.length == 4, "Toast.Type: 4 типа (success/error/warning/info)");
+
+            // Авто-скрытие — 4000 мс (как в прототипе).
+            java.lang.reflect.Field autoHide = toast.getField("AUTO_HIDE_MS");
+            check((Integer) autoHide.get(null) == 4000, "Toast.AUTO_HIDE_MS == 4000");
+
+            // accentColor: success зелёный, error красный, warning оранжевый, info синий.
+            Method accent = toast.getDeclaredMethod("accentColor", typeCls);
+            accent.setAccessible(true);
+            Object successType = typeCls.getField("SUCCESS").get(null);
+            Object errorType = typeCls.getField("ERROR").get(null);
+            Object warningType = typeCls.getField("WARNING").get(null);
+            Object infoType = typeCls.getField("INFO").get(null);
+            check(accent.invoke(null, successType).equals(new java.awt.Color(52, 199, 89)),
+                    "accentColor(SUCCESS) == iOS system green");
+            check(accent.invoke(null, errorType).equals(new java.awt.Color(255, 59, 48)),
+                    "accentColor(ERROR) == iOS system red");
+            check(accent.invoke(null, warningType).equals(new java.awt.Color(255, 149, 0)),
+                    "accentColor(WARNING) == iOS system orange");
+            check(accent.invoke(null, infoType).equals(new java.awt.Color(0, 122, 255)),
+                    "accentColor(INFO) == iOS system blue");
+
+            // buildPanel: строит JPanel с заголовком и сообщением (без показа окна).
+            Method buildPanel = toast.getDeclaredMethod("buildPanel",
+                    typeCls, String.class, String.class,
+                    Class.forName("corpagent.gui.Toast$ToastInstance"));
+            buildPanel.setAccessible(true);
+            Object panel = buildPanel.invoke(null, successType, "Сохранено", "Навык обновлён", null);
+            check(panel instanceof javax.swing.JPanel, "buildPanel: возвращает JPanel");
+            check(countLabels((javax.swing.JPanel) panel) >= 3,
+                    "buildPanel: иконка + заголовок + сообщение (>=3 JLabel)");
+
+            // activeCount стартует с 0 (тосты не показывались).
+            Method activeCount = toast.getMethod("activeCount");
+            check((Integer) activeCount.invoke(null) == 0, "activeCount(): изначально 0");
+        } catch (Exception e) {
+            check(false, "testToast: " + e);
+        }
+    }
+
+    /** Рекурсивно считает JLabel внутри контейнера (для проверки состава тоста). */
+    private static int countLabels(java.awt.Container c) {
+        int n = 0;
+        for (java.awt.Component comp : c.getComponents()) {
+            if (comp instanceof javax.swing.JLabel) {
+                n++;
+            }
+            if (comp instanceof java.awt.Container) {
+                n += countLabels((java.awt.Container) comp);
+            }
+        }
+        return n;
     }
 
     private static Object getStatic(Class<?> owner, String field) throws Exception {

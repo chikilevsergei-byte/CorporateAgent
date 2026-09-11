@@ -182,7 +182,8 @@ public class SkillManagerView extends JPanel {
         codeArea.setText("");
         refresh();
         frame.refreshSidebar();
-        JOptionPane.showMessageDialog(this, "Навык '" + name + "' сохранён!");
+        Toast.success(javax.swing.SwingUtilities.getWindowAncestor(this),
+                "Сохранено", "Навык «" + name + "» обновлён");
     }
 
         private JLabel fieldLabel(String text) {
