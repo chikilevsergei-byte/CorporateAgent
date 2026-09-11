@@ -87,8 +87,9 @@
       применено в `CreateProjectDialog`, `DbManagerView`. Смоук: `testFormRow`.
 
 ### 🟠 Приоритет 2 — важно
-- [ ] **UI-2.1** Wizard «Создать проект» (3 шага: Основное → Источник БД → Роли/промпт):
-      панель прогресса (кружки-номера `active/completed`), `CardLayout` шагов, кнопки Назад/Далее/Создать.
+- [x] **UI-2.1** Wizard «Создать проект» (3 шага: Основное → База данных → Рабочие чаты):
+      `WizardProgress` (кружки-номера `active/completed`), `CardLayout` шагов, кнопки Назад/Далее/Создать.
+      Смоук: `testWizardProgress`.
 - [x] **UI-2.2** БД-карточки вместо строк в `SettingsPanelDatabases` (иконка, имя, мета, путь mono,
       статус, hover-подсветка).
 - [x] **UI-2.3** Кастомный слайдер (`Ui.styleSlider`/`SlimSliderUI` — заливка трека до бегунка);

@@ -59,6 +59,14 @@ public class CreateProjectDialog extends JDialog {
     private boolean created = false;
     private String createdProjectId;
 
+    // UI-2.1: пошаговый мастер (3 шага) с панелью прогресса.
+    private final java.awt.CardLayout stepLayout = new java.awt.CardLayout();
+    private final JPanel stepContainer = new JPanel(stepLayout);
+    private WizardProgress progress;
+    private JButton backBtn;
+    private JButton nextBtn;
+    private int step = 0;
+
     public CreateProjectDialog(MainFrame frame, DataStore store) {
         super(frame, "Создать проект", true);
         this.frame = frame;
@@ -76,21 +84,31 @@ public class CreateProjectDialog extends JDialog {
         root.add(Ui.header("🗂️", "Создать проект", Ui.FONT_TITLE));
         root.add(Box.createVerticalStrut(6));
         JLabel hint = new JLabel("<html>Будет создана база данных проекта (tasks, risks, meetings, …) "
-                + "и <b>7 рабочих чатов-ролей</b>.<br>"
-                + "Каждый чат настроен на БД проекта + «Методология LPG» (только чтение) "
-                + "и профильные навыки/инструменты.</html>");
+                + "и <b>7 рабочих чатов-ролей</b>. Каждый чат настроен на БД проекта "
+                + "+ «Методология LPG» (только чтение) и профильные навыки/инструменты.</html>");
         hint.setFont(Ui.FONT_SMALL);
         hint.setForeground(Ui.TEXT_GRAY);
         hint.setAlignmentX(Component.LEFT_ALIGNMENT);
         root.add(hint);
-        root.add(Box.createVerticalStrut(14));
-
-        // Имя проекта
-        root.add(Ui.formRow("Название проекта", nameField));
         root.add(Box.createVerticalStrut(10));
 
+        // UI-2.1: панель прогресса мастера.
+        progress = new WizardProgress("Основное", "База данных", "Рабочие чаты");
+        root.add(progress);
+        root.add(Box.createVerticalStrut(8));
+
+        // Контейнер шагов (CardLayout).
+        stepContainer.setOpaque(false);
+        stepContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+        stepContainer.setBorder(new EmptyBorder(4, 0, 4, 0));
+
+        // ---- Шаг 1: Основное ----
+        JPanel s1 = step();
+        s1.add(Ui.formRow("Название проекта", nameField));
+        s1.add(Box.createVerticalStrut(10));
+
         // R-P1.9.5: выбор источника БД проекта (UI-1.3: радио-карточки).
-        root.add(fieldLabel("Источник БД проекта"));
+        s1.add(fieldLabel("Источник БД проекта"));
         newDbRadio.setSelected(true);
         newDbRadio.setOpaque(false);
         existingDbRadio.setOpaque(false);
@@ -123,8 +141,9 @@ public class CreateProjectDialog extends JDialog {
         srcCards.add(newDbCard);
         srcCards.add(Box.createVerticalStrut(6));
         srcCards.add(existingDbCard);
-        root.add(srcCards);
-        root.add(Box.createVerticalStrut(6));
+        s1.add(srcCards);
+        s1.add(Box.createVerticalStrut(6));
+        stepContainer.add(s1, "step1");
 
         // Ряд «Существующая БД» — комбобокс зарегистрированных БД (скрыт при выборе «новая»).
         existingDbRow = new JPanel();
@@ -136,8 +155,8 @@ public class CreateProjectDialog extends JDialog {
         existingDbCombo.setFont(Ui.FONT_SMALL);
         existingDbRow.add(existingDbCombo);
         existingDbRow.setVisible(false);
-        root.add(existingDbRow);
-        root.add(Box.createVerticalStrut(10));
+        s1.add(existingDbRow);
+        s1.add(Box.createVerticalStrut(10));
 
         // Техническое имя БД — в отдельном ряду (скрывается при выборе существующей БД).
         dbNameRow = new JPanel();
@@ -169,11 +188,13 @@ public class CreateProjectDialog extends JDialog {
             }
         });
         dbNameRow.add(dbField);
-        root.add(dbNameRow);
-        root.add(Box.createVerticalStrut(10));
+        // ---- Шаг 2: База данных ----
+        JPanel s2 = step();
+        s2.add(dbNameRow);
+        s2.add(Box.createVerticalStrut(10));
 
         // Описание
-        root.add(fieldLabel("Описание проекта (опционально)"));
+        s2.add(fieldLabel("Описание проекта (опционально)"));
         descArea.setLineWrap(true);
         descArea.setWrapStyleWord(true);
         descArea.setFont(Ui.FONT_PLAIN);
@@ -181,11 +202,11 @@ public class CreateProjectDialog extends JDialog {
         descScroll.setPreferredSize(new Dimension(620, 70));
         descScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
         descScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(descScroll);
-        root.add(Box.createVerticalStrut(10));
+        s2.add(descScroll);
+        s2.add(Box.createVerticalStrut(10));
 
         // Системный промпт
-        root.add(fieldLabel("Системный промпт проекта (роль РП, цели, «без правки методологии LPG»)"));
+        s2.add(fieldLabel("Системный промпт проекта (роль РП, цели, «без правки методологии LPG»)"));
         promptArea.setLineWrap(true);
         promptArea.setWrapStyleWord(true);
         promptArea.setFont(Ui.FONT_PLAIN);
@@ -195,13 +216,15 @@ public class CreateProjectDialog extends JDialog {
         promptScroll.setPreferredSize(new Dimension(620, 110));
         promptScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 110));
         promptScroll.setAlignmentX(Component.LEFT_ALIGNMENT);
-        root.add(promptScroll);
-        root.add(Box.createVerticalStrut(14));
+        s2.add(promptScroll);
+        s2.add(Box.createVerticalStrut(10));
+        stepContainer.add(s2, "step2");
 
-        // Список будущих чатов
+        // ---- Шаг 3: Рабочие чаты ----
+        JPanel s3 = step();
         JLabel rolesTitle = fieldLabel("Будут созданы чаты:");
-        root.add(rolesTitle);
-        root.add(Box.createVerticalStrut(4));
+        s3.add(rolesTitle);
+        s3.add(Box.createVerticalStrut(4));
         JPanel rolesPanel = new JPanel();
         rolesPanel.setLayout(new BoxLayout(rolesPanel, BoxLayout.Y_AXIS));
         rolesPanel.setOpaque(false);
@@ -217,20 +240,43 @@ public class CreateProjectDialog extends JDialog {
             row.add(l);
             rolesPanel.add(row);
         }
-        root.add(rolesPanel);
+        s3.add(rolesPanel);
+        s3.add(Box.createVerticalStrut(10));
+        stepContainer.add(s3, "step3");
 
-        // Кнопки
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        root.add(stepContainer);
+
+        // Кнопки навигации мастера (UI-2.1): Назад / Далее / Отмена / Создать проект.
+        JPanel buttons = new JPanel(new BorderLayout());
         buttons.setOpaque(false);
         buttons.setAlignmentX(Component.LEFT_ALIGNMENT);
-        Ui.styleButton(createBtn, true);
-        Ui.withActionIcon(createBtn, "🗂️");
-        createBtn.addActionListener(e -> createProject());
-        buttons.add(createBtn);
+        buttons.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+
+        JPanel leftBtns = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        leftBtns.setOpaque(false);
+        backBtn = new JButton("← Назад");
+        Ui.styleSecondary(backBtn);
+        backBtn.addActionListener(e -> goStep(step - 1));
+        leftBtns.add(backBtn);
         JButton cancel = new JButton("Отмена");
         Ui.styleSecondary(cancel);
         cancel.addActionListener(e -> dispose());
-        buttons.add(cancel);
+        leftBtns.add(cancel);
+        buttons.add(leftBtns, BorderLayout.WEST);
+
+        JPanel rightBtns = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        rightBtns.setOpaque(false);
+        nextBtn = new JButton("Далее →");
+        Ui.styleButton(nextBtn, true);
+        nextBtn.addActionListener(e -> goStep(step + 1));
+        rightBtns.add(nextBtn);
+
+        Ui.styleButton(createBtn, true);
+        Ui.withActionIcon(createBtn, "🗂️");
+        createBtn.addActionListener(e -> createProject());
+        rightBtns.add(createBtn);
+        buttons.add(rightBtns, BorderLayout.EAST);
+
         root.add(Box.createVerticalStrut(10));
         root.add(buttons);
 
@@ -242,6 +288,9 @@ public class CreateProjectDialog extends JDialog {
 
         root.add(Box.createVerticalGlue());
         setContentPane(root);
+
+        // UI-2.1: стартовое состояние мастера — шаг 1.
+        goStep(0);
 
         // Имя БД по умолчанию — из имени проекта (только пока пользователь его не менял).
         nameField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
@@ -271,6 +320,33 @@ public class CreateProjectDialog extends JDialog {
     }
 
     private boolean dbNameUserEdited = false;
+
+    /** UI-2.1: новая панель-шаг (вертикальный BoxLayout). */
+    private JPanel step() {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setOpaque(false);
+        p.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return p;
+    }
+
+    /** UI-2.1: переключает шаг мастера, обновляя прогресс и кнопки. */
+    private void goStep(int target) {
+        int max = progress.stepCount() - 1;
+        step = Math.max(0, Math.min(target, max));
+        stepLayout.show(stepContainer, "step" + (step + 1));
+        progress.setCurrent(step);
+        backBtn.setVisible(step > 0);
+        nextBtn.setVisible(step < max);
+        createBtn.setVisible(step == max);
+        stepContainer.revalidate();
+        stepContainer.repaint();
+    }
+
+    /** Текущий шаг мастера (0-based) — для смоук-теста. */
+    public int currentStep() {
+        return progress == null ? -1 : progress.currentStep();
+    }
 
     /** R-P1.9.5: показывает ряд имени новой БД либо ряд выбора существующей БД. */
     private void updateSourceRows() {

@@ -53,6 +53,7 @@ public class SmokeCoreTest {
         testRadioCard();
         testFormRow();
         testSlider();
+        testWizardProgress();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1018,6 +1019,39 @@ public class SmokeCoreTest {
             check(thumb != null, "styleSlider: UI возвращает размер компонента");
         } catch (Exception e) {
             check(false, "testSlider: " + e);
+        }
+    }
+
+    // 26) UI-2.1: панель прогресса мастера — шаги, состояния active/completed.
+    private static void testWizardProgress() {
+        try {
+            Class<?> cls = Class.forName("corpagent.gui.WizardProgress");
+            java.lang.reflect.Constructor<?> ctor =
+                    cls.getConstructor(String[].class);
+            Object wp = ctor.newInstance((Object) new String[]{"Основное", "База данных", "Рабочие чаты"});
+
+            Method stepCount = cls.getMethod("stepCount");
+            Method setCurrent = cls.getMethod("setCurrent", int.class);
+            Method stateOf = cls.getMethod("stateOf", int.class);
+            Method labelAt = cls.getMethod("labelAt", int.class);
+
+            check((Integer) stepCount.invoke(wp) == 3, "WizardProgress: 3 шага");
+            check("Основное".equals(labelAt.invoke(wp, 0)), "WizardProgress: подпись шага 0");
+            check("Рабочие чаты".equals(labelAt.invoke(wp, 2)), "WizardProgress: подпись шага 2");
+
+            // Шаг 0 активен, шаги 1..2 ещё не пройдены.
+            setCurrent.invoke(wp, 0);
+            check("active".equals(stateOf.invoke(wp, 0)), "шаг 0: active");
+            check("".equals(stateOf.invoke(wp, 1)), "шаг 1: не активен/не пройден");
+            check("".equals(stateOf.invoke(wp, 2)), "шаг 2: не активен/не пройден");
+
+            // Переход на шаг 2: 0..1 completed, 2 active.
+            setCurrent.invoke(wp, 2);
+            check("completed".equals(stateOf.invoke(wp, 0)), "после шага 2: шаг 0 completed");
+            check("completed".equals(stateOf.invoke(wp, 1)), "после шага 2: шаг 1 completed");
+            check("active".equals(stateOf.invoke(wp, 2)), "после шага 2: шаг 2 active");
+        } catch (Exception e) {
+            check(false, "testWizardProgress: " + e);
         }
     }
 
