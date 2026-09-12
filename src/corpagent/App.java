@@ -43,7 +43,7 @@ public class App {
             // Этап 1 (v4): поднимаем локальный HTTP-сервер и открываем браузер.
             // Swing-окно пока работает параллельно — будет удалено на Этапе 6.
             try {
-                ApiBootstrap.StartResult srv = ApiBootstrap.start(baseDir);
+                ApiBootstrap.StartResult srv = ApiBootstrap.start(baseDir, agent, store);
                 System.out.println("[App] Web-UI запущен на порту " + srv.port);
                 ApiBootstrap.openBrowser(srv.server.browsableUrl());
             } catch (Exception webEx) {

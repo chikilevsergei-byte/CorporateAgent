@@ -32,13 +32,30 @@ public final class ApiBootstrap {
      * @throws java.io.IOException если не удалось занять ни один порт
      */
     public static StartResult start(String baseDir) throws java.io.IOException {
+        return start(baseDir, null, null);
+    }
+    /**
+     * Создаёт и запускает сервер с маршрутами чата (Этап 3).
+     *
+     * @param baseDir базовая папка приложения
+     * @param agent   ядро агента (нужно для {@code /api/chat*}); может быть null
+     * @param store   хранилище данных (чаты); может быть null
+     * @return запущенный сервер и выбранный порт
+     * @throws java.io.IOException если не удалось занять ни один порт
+     */
+    public static StartResult start(String baseDir, corpagent.Agent agent,
+                                    corpagent.data.DataStore store) throws java.io.IOException {
         Auth auth = Auth.withRandomToken();
         String webRoot = baseDir + java.io.File.separator + "web";
         StaticHandler staticHandler = new StaticHandler(webRoot);
         ApiServer server = new ApiServer(auth, staticHandler);
 
-        // Прод-маршруты (health/shutdown/open-folder) + заглушка приветствия.
+        // Прод-маршруты (health/shutdown/open-folder).
         SystemRoutes.register(server);
+        // Маршруты чата (Этап 3) — только при наличии агента и хранилища.
+        if (agent != null && store != null) {
+            new ChatRoutes(agent, store).register(server);
+        }
 
         int port = server.start();
         return new StartResult(server, port);

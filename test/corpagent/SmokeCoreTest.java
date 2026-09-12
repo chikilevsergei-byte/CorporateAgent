@@ -66,6 +66,10 @@ public class SmokeCoreTest {
         testApiAuth();
         testApiResponse();
         testWebPrototypeAssets();
+        testChatStreamParsing();
+        testChatRequestDto();
+        testChatRoutesContext();
+        testApiStreamRoute();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1555,6 +1559,148 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testWebPrototypeAssets: " + e);
         }
+    }
+
+    // 39) Этап 3 (v4): разбор SSE-кадра стриминга (OpenAI-совместимый формат).
+    //     parseSseLine вынесен статическим — тестируется без сети.
+    private static void testChatStreamParsing() {
+        try {
+            Class<?> dsc = Class.forName("corpagent.llm.DeepSeekClient");
+            java.lang.reflect.Method parse = dsc.getMethod("parseSseLine", String.class);
+
+            check("Привет".equals(parse.invoke(null,
+                            "data: {\"choices\":[{\"delta\":{\"content\":\"Привет\"}}]}")),
+                    "parseSseLine: извлекает delta.content");
+            check("".equals(parse.invoke(null,
+                            "data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}")),
+                    "parseSseLine: кадр без content → пустая строка");
+            check(parse.invoke(null, "data: [DONE]") == null,
+                    "parseSseLine: [DONE] → null");
+            check(parse.invoke(null, ": keep-alive") == null,
+                    "parseSseLine: SSE-комментарий → null");
+            check(parse.invoke(null, "") == null,
+                    "parseSseLine: пустая строка → null");
+            check(parse.invoke(null, "event: message") == null,
+                    "parseSseLine: поле event: → null");
+            check(parse.invoke(null, "data: {невалидный json") == null,
+                    "parseSseLine: невалидный JSON → null");
+            check(parse.invoke(null, "data:{\"choices\":[]}") == null,
+                    "parseSseLine: пустой choices → null");
+        } catch (Exception e) {
+            check(false, "testChatStreamParsing: " + e);
+        }
+    }
+
+    // 40) Этап 3 (v4): DTO запроса чата — парсинг, нормализация истории, текст с файлом.
+    private static void testChatRequestDto() {
+        try {
+            Class<?> cls = Class.forName("corpagent.api.dto.ChatRequest");
+            java.lang.reflect.Method parse = cls.getMethod("parse", String.class);
+
+            Object req = parse.invoke(null,
+                    "{\"chat_id\":\"chat_x\",\"message\":\"привет\",\"skills\":[\"A\"],\"tools\":[\"T\"]}");
+            check("chat_x".equals(getStatic(cls, "chatId", req)), "ChatRequest: chat_id разобран");
+            check("привет".equals(getField(cls, "message", req)), "ChatRequest: message разобран");
+            java.util.List<?> skills = (java.util.List<?>) getField(cls, "skills", req);
+            check(skills.size() == 1 && "A".equals(skills.get(0)), "ChatRequest: skills разобраны");
+
+            // toLlmHistory добавляет текущее сообщение пользователя в конец.
+            java.lang.reflect.Method toLlm = cls.getMethod("toLlmHistory");
+            java.util.List<?> hist = (java.util.List<?>) toLlm.invoke(req);
+            check(hist.size() == 1, "ChatRequest.toLlmHistory: только текущее сообщение");
+            java.util.Map<?, ?> last = (java.util.Map<?, ?>) hist.get(hist.size() - 1);
+            check("user".equals(last.get("role")) && "привет".equals(last.get("content")),
+                    "ChatRequest.toLlmHistory: role=user, content=message");
+
+            // Пустое сообщение без истории → IllegalArgumentException.
+            boolean threw = false;
+            try {
+                parse.invoke(null, "{}");
+            } catch (java.lang.reflect.InvocationTargetException ite) {
+                threw = ite.getCause() instanceof IllegalArgumentException;
+            }
+            check(threw, "ChatRequest: пустой запрос → IllegalArgumentException");
+
+            // Файл присоединяется к тексту пользователя.
+            Object req2 = parse.invoke(null,
+                    "{\"message\":\"см\",\"file_content\":\"СОДЕРЖИМОЕ\"}");
+            java.util.List<?> hist2 = (java.util.List<?>) toLlm.invoke(req2);
+            String content = String.valueOf(((java.util.Map<?, ?>) hist2.get(0)).get("content"));
+            check(content.contains("см") && content.contains("СОДЕРЖИМОЕ"),
+                    "ChatRequest: file_content присоединён к сообщению");
+        } catch (Exception e) {
+            check(false, "testChatRequestDto: " + e);
+        }
+    }
+
+    // 41) Этап 3 (v4): сборка текстового контекста навыков/инструментов из каталога.
+    private static void testChatRoutesContext() {
+        try {
+            Class<?> cls = Class.forName("corpagent.api.ChatRoutes");
+            java.lang.reflect.Method build = cls.getMethod("buildContext",
+                    java.util.List.class, java.util.Map.class, String.class);
+
+            java.util.Map<String, Object> catalog = new java.util.LinkedHashMap<String, Object>();
+            java.util.Map<String, Object> item = new java.util.LinkedHashMap<String, Object>();
+            item.put("description", "работа с рисками");
+            catalog.put("Риски", item);
+
+            java.util.List<Object> sel = new java.util.ArrayList<Object>();
+            sel.add("Риски");
+            sel.add("Отсутствует"); // имя не в каталоге — игнорируется
+
+            String ctx = (String) build.invoke(null, sel, catalog, "description");
+            check(ctx != null && ctx.contains("Риски") && ctx.contains("работа с рисками"),
+                    "ChatRoutes.buildContext: собирает описания выбранного");
+            check(!ctx.contains("Отсутствует"),
+                    "ChatRoutes.buildContext: пропускает имена без каталога");
+
+            String empty = (String) build.invoke(null, new java.util.ArrayList<Object>(),
+                    catalog, "description");
+            check(empty == null, "ChatRoutes.buildContext: пустой выбор → null");
+        } catch (Exception e) {
+            check(false, "testChatRoutesContext: " + e);
+        }
+    }
+
+    // 42) Этап 3 (v4): сервер принимает регистрацию SSE-маршрута и хранит его.
+    //     Полный round-trip стриминга требует LLM-ключа, поэтому проверяем контракт
+    //     регистрации streamRoute(...) без сети.
+    private static void testApiStreamRoute() {
+        try {
+            Class<?> authCls = Class.forName("corpagent.api.Auth");
+            Object auth = authCls.getMethod("withRandomToken").invoke(null);
+            Class<?> shCls = Class.forName("corpagent.api.StaticHandler");
+            Object sh = shCls.getConstructor(String.class).newInstance("web");
+            Class<?> serverCls = Class.forName("corpagent.api.ApiServer");
+            Object server = serverCls.getConstructor(authCls, shCls).newInstance(auth, sh);
+
+            Class<?> streamRouteCls = Class.forName("corpagent.api.ApiServer$StreamRoute");
+            java.lang.reflect.Method reg = serverCls.getMethod("streamRoute", String.class, streamRouteCls);
+            Object proxy = java.lang.reflect.Proxy.newProxyInstance(
+                    streamRouteCls.getClassLoader(),
+                    new Class<?>[]{streamRouteCls},
+                    (p, m, a) -> null);
+            reg.invoke(server, "/api/chat/stream", proxy);
+
+            java.lang.reflect.Field f = serverCls.getDeclaredField("streamRoutes");
+            f.setAccessible(true);
+            java.util.Map<?, ?> routes = (java.util.Map<?, ?>) f.get(server);
+            check(routes.containsKey("/api/chat/stream"),
+                    "ApiServer.streamRoute: SSE-маршрут зарегистрирован");
+        } catch (Exception e) {
+            check(false, "testApiStreamRoute: " + e);
+        }
+    }
+
+    private static Object getField(Class<?> owner, String field, Object target) throws Exception {
+        java.lang.reflect.Field f = owner.getDeclaredField(field);
+        f.setAccessible(true);
+        return f.get(target);
+    }
+
+    private static Object getStatic(Class<?> owner, String field, Object target) throws Exception {
+        return getField(owner, field, target);
     }
 
     private static String readUtf8(java.io.File f) throws java.io.IOException {

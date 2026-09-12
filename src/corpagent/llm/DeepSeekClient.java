@@ -59,6 +59,21 @@ public class DeepSeekClient {
     }
 
     /**
+     * Обработчик потокового ответа (SSE). Вызывается по мере поступления токенов,
+     * чтобы отдавать ответ в браузер инкрементально, не дожидаясь полного текста.
+     */
+    public interface StreamHandler {
+        /** Новый фрагмент ответа (delta.content). */
+        void onToken(String delta);
+
+        /** Стриминг завершён: полный накопленный текст ответа. */
+        void onDone(String fullText);
+
+        /** Ошибка сети/API (сообщение без эмодзи-префикса). */
+        void onError(String message);
+    }
+
+    /**
      * Универсальный вызов LLM.
      *
      * @param messages      список сообщений (Map с role и content/text)
@@ -207,6 +222,160 @@ public class DeepSeekClient {
             }
         }
         return "❌ Превышено число итераций function calling (" + MAX_TOOL_ITERATIONS + ").";
+    }
+
+    /**
+     * Потоковый вызов LLM (SSE, {@code stream=true}). Отправляет историю в модель и
+     * дёргает {@code handler.onToken(...)} на каждый фрагмент {@code delta.content},
+     * затем {@code handler.onDone(fullText)}. При сбое — {@code handler.onError(...)}
+     * и возврат сообщения об ошибке (начинается с "❌").
+     *
+     * @param messages     список сообщений (Map с role и content/text)
+     * @param systemPrompt системный промпт (может быть пустым)
+     * @param handler      обработчик токенов (может быть null)
+     * @return полный текст ответа или сообщение об ошибке
+     */
+    public String callStreaming(List<Map<String, Object>> messages, String systemPrompt,
+                                StreamHandler handler) {
+        List<Map<String, Object>> allMessages = buildMessages(messages, systemPrompt);
+
+        Map<String, Object> data = Json.newObject();
+        data.put("model", config.getModel());
+        data.put("messages", allMessages);
+        data.put("temperature", config.getTemperature());
+        data.put("max_tokens", config.getMaxTokens());
+        data.put("stream", Boolean.TRUE);
+
+        HttpURLConnection conn = null;
+        StringBuilder full = new StringBuilder();
+        try {
+            URL url = new URL(config.getChatCompletionUrl());
+            conn = (HttpURLConnection) url.openConnection();
+            configureTrustAll(conn);
+            conn.setRequestMethod("POST");
+            conn.setConnectTimeout(60000);
+            conn.setReadTimeout(180000);
+            conn.setRequestProperty("Authorization", "Bearer " + config.getApiKey());
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("Accept", "text/event-stream");
+            conn.setDoOutput(true);
+
+            byte[] body = Json.stringify(data).getBytes(StandardCharsets.UTF_8);
+            OutputStream os = conn.getOutputStream();
+            os.write(body);
+            os.flush();
+            os.close();
+
+            int code = conn.getResponseCode();
+            if (code < 200 || code >= 300) {
+                String errBody = readStream(conn.getErrorStream());
+                String msg = "❌ Ошибка HTTP " + code + ": " + errBody;
+                if (handler != null) {
+                    handler.onError("Ошибка HTTP " + code + ": " + errBody);
+                }
+                return msg;
+            }
+
+            BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String delta = parseSseLine(line);
+                if (delta == null) {
+                    continue; // [DONE] / комментарий / служебный кадр
+                }
+                if (!delta.isEmpty()) {
+                    full.append(delta);
+                    if (handler != null) {
+                        handler.onToken(delta);
+                    }
+                }
+            }
+            reader.close();
+            if (handler != null) {
+                handler.onDone(full.toString());
+            }
+            return full.toString();
+        } catch (java.io.IOException e) {
+            if (handler != null) {
+                handler.onError(e.getMessage());
+            }
+            return "❌ Ошибка сети API: " + e.getMessage();
+        } catch (Exception e) {
+            if (handler != null) {
+                handler.onError(e.getMessage());
+            }
+            return "❌ Ошибка API: " + e.getMessage();
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Разбирает одну строку SSE-потока (OpenAI-совместимый формат).
+     * Возвращает {@code delta.content} кадра ({@code data: {...}}), пустую строку —
+     * если кадр без контента (например, только роль), {@code null} — если это не
+     * контент-кадр ({@code [DONE]}, комментарий, поле {@code event:}, невалидный JSON).
+     * Статический — тестируется без сети.
+     */
+    public static String parseSseLine(String line) {
+        if (line == null) {
+            return null;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith(":") || trimmed.startsWith("event:")) {
+            return null;
+        }
+        if (!trimmed.startsWith("data:")) {
+            return null;
+        }
+        String payload = trimmed.substring("data:".length()).trim();
+        if (payload.isEmpty() || "[DONE]".equals(payload)) {
+            return null;
+        }
+        Map<String, Object> frame;
+        try {
+            frame = Json.parseObject(payload);
+        } catch (Exception e) {
+            return null; // невалидный JSON — пропускаем кадр
+        }
+        if (frame == null) {
+            return null;
+        }
+        List<Object> choices = Json.arr(frame, "choices");
+        if (choices == null || choices.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> choice = Json.asMap(choices.get(0));
+        if (choice == null) {
+            return null;
+        }
+        Map<String, Object> delta = Json.obj(choice, "delta");
+        if (delta == null) {
+            // Некоторые провайдеры кладут текст в message.content (не потоково).
+            Map<String, Object> message = Json.obj(choice, "message");
+            if (message != null) {
+                return Json.str(message, "content", "");
+            }
+            return null;
+        }
+        return Json.str(delta, "content", "");
+    }
+
+    /** Настраивает соединение на доверие всем сертификатам (встроенная JRE/прокси/MITM). */
+    private static void configureTrustAll(HttpURLConnection conn) {
+        if (conn instanceof HttpsURLConnection) {
+            HttpsURLConnection https = (HttpsURLConnection) conn;
+            https.setSSLSocketFactory(createTrustAllSslContext().getSocketFactory());
+            https.setHostnameVerifier(new HostnameVerifier() {
+                @Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
+        }
     }
 
     /** Строит список сообщений: системный промпт + история. */

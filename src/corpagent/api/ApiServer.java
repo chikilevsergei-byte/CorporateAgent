@@ -40,12 +40,27 @@ public class ApiServer {
      */
     private final Map<String, ApiRoute> routes = new LinkedHashMap<String, ApiRoute>();
 
+    /**
+     * Реестр стриминговых маршрутов (SSE): обработчик сам пишет в тело ответа.
+     * Используется для {@code /api/chat/stream}.
+     */
+    private final Map<String, StreamRoute> streamRoutes = new LinkedHashMap<String, StreamRoute>();
+
     private HttpServer server;
     private int port = -1;
 
     /** Обработчик API-маршрута: получает тело запроса и возвращает ответ. */
     public interface ApiRoute {
         ApiResponse handle(String method, String body, Map<String, List<String>> query) throws Exception;
+    }
+
+    /**
+     * Обработчик стримингового маршрута (SSE). Получает живой {@link HttpExchange}
+     * (уже после проверки токена) и сам управляет заголовками/телом ответа.
+     */
+    public interface StreamRoute {
+        void stream(String method, String body, Map<String, List<String>> query,
+                    HttpExchange exchange) throws Exception;
     }
 
     public ApiServer(Auth auth, StaticHandler staticHandler) {
@@ -56,6 +71,11 @@ public class ApiServer {
     /** Регистрирует API-маршрут (точное совпадение пути). */
     public void route(String path, ApiRoute handler) {
         routes.put(path, handler);
+    }
+
+    /** Регистрирует стриминговый (SSE) маршрут. */
+    public void streamRoute(String path, StreamRoute handler) {
+        streamRoutes.put(path, handler);
     }
 
     public int getPort() {
@@ -136,13 +156,30 @@ public class ApiServer {
                 return;
             }
         }
+        String body = readBody(exchange);
+        Map<String, List<String>> query = parseQuery(exchange.getRequestURI().getRawQuery());
+
+        // Стриминговые маршруты (SSE): обработчик сам пишет ответ в exchange.
+        StreamRoute streamRoute = streamRoutes.get(path);
+        if (streamRoute != null) {
+            try {
+                streamRoute.stream(exchange.getRequestMethod(), body, query, exchange);
+            } catch (Exception e) {
+                // Если заголовки ещё не отправлены — вернём JSON-ошибку.
+                try {
+                    send(exchange, ApiResponse.serverError(e.getMessage()));
+                } catch (Exception ignored) {
+                    // ответ уже начал отправляться в потоковом режиме — не дублируем
+                }
+            }
+            return;
+        }
+
         ApiRoute route = routes.get(path);
         if (route == null) {
             send(exchange, ApiResponse.notFound("Маршрут не найден: " + path));
             return;
         }
-        String body = readBody(exchange);
-        Map<String, List<String>> query = parseQuery(exchange.getRequestURI().getRawQuery());
         ApiResponse response;
         try {
             response = route.handle(exchange.getRequestMethod(), body, query);

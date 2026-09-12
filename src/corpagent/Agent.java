@@ -61,9 +61,51 @@ public class Agent {
         toolExecutor.setWriteConfirmation(confirmation);
     }
 
-    /** Возвращает имя используемой модели. */
+        /** Возвращает имя используемой модели. */
     public String getModel() {
         return config.getModel();
+    }
+
+    /**
+     * Строит системный промпт для чата по активным контекстам (навыки/инструменты/БД).
+     * Вынесено из {@link #processTask}, чтобы стриминговый чат использовал тот же
+     * контракт системного промпта. Чистая функция (без LLM/БД).
+     */
+    public static String buildSystemPrompt(String skillsContext, String toolsContext, String dbContext) {
+        String systemPrompt = "Ты — корпоративный ИИ-ассистент. Отвечай структурированно на русском языке.";
+        if (skillsContext != null && !skillsContext.isEmpty()) {
+            systemPrompt += "\n\nАктивные навыки:\n" + skillsContext;
+        }
+        if (toolsContext != null && !toolsContext.isEmpty()) {
+            systemPrompt += "\n\nАктивные инструменты:\n" + toolsContext;
+        }
+        if (dbContext != null && !dbContext.isEmpty()) {
+            systemPrompt += "\n\nУ вас есть доступ к базе данных. Структура и данные БД (обзор):\n" + dbContext;
+        }
+        return systemPrompt;
+    }
+
+    /**
+     * Стриминговый ответ чата: отправляет историю в LLM в режиме SSE и дёргает
+     * {@code handler} на каждый токен. Инструменты не вызываются (стрим — текстовый
+     * путь). История обрезается тем же бюджетом, что и в {@link #processTask}.
+     *
+     * @param history       история сообщений (включая текущее сообщение пользователя)
+     * @param systemPrompt  системный промпт (см. {@link #buildSystemPrompt})
+     * @param handler       обработчик токенов
+     * @return полный текст ответа (или сообщение об ошибке, начинающееся с "❌")
+     */
+    public String chatStream(List<Map<String, Object>> history, String systemPrompt,
+                             DeepSeekClient.StreamHandler handler) {
+        if (TokenBudget.isExhaustedToday()) {
+            String msg = "⛔ Дневной лимит токенов израсходован. Попробуйте позже.";
+            if (handler != null) {
+                handler.onDone(msg);
+            }
+            return msg;
+        }
+        List<Map<String, Object>> trimmed = trimHistory(history, systemPrompt);
+        return llm.callStreaming(trimmed, systemPrompt, handler);
     }
 
     /** Оценочный бюджет истории в «токенах»: в LLM уходит только хвост диалога
