@@ -1,18 +1,706 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CorporateAgent v4</title>
-  <link rel="stylesheet" href="css/base.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CorporateAgent v4</title>
+<link rel="stylesheet" href="css/prototype.css">
 </head>
 <body>
-  <main class="hello">
-    <div class="hello__badge">🤖</div>
-    <h1 class="hello__title">Hello from CorporateAgent</h1>
-    <p class="hello__subtitle">Веб-интерфейс v4 запущен. Скелет HTTP-сервера работает.</p>
-    <p class="hello__meta" id="token-info"></p>
-  </main>
-  <script src="js/app.js"></script>
+<div class="title-bar">
+    <div class="window-controls">
+        <div class="traffic-light close"></div>
+        <div class="traffic-light minimize"></div>
+        <div class="traffic-light maximize"></div>
+    </div>
+    <div class="app-title"><span style="font-size: 20px;">🤖</span> AI ассистент руководителя проектов — CorporateAgent v3 (v3.1)</div>
+    <button class="settings-btn" onclick="openModal('settingsModal')">⚙️ Настройки</button>
+</div>
+
+<div class="app-container">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-actions">
+                <button class="btn-new-chat" onclick="showToast('success', 'Новый чат', 'Создан новый диалог')">✨ Новый чат</button>
+                <button class="btn-create-project" onclick="openModal('projectModal')">📁 Создать проект</button>
+            </div>
+            <div class="sidebar-quick-actions">
+                <button class="btn-quick">❓ Вопрос по LPG</button>
+                <button class="btn-quick">💻 Вопрос по ИТ</button>
+                <button class="btn-quick" onclick="showNotes()">📝 Заметки</button>
+            </div>
+        </div>
+
+        <div class="sidebar-section" id="projectsSection">
+            <div class="sidebar-section-header" onclick="toggleSection('projectsSection')">
+                <div class="sidebar-section-title">📁 Проекты</div>
+                <div class="sidebar-section-toggle">▼</div>
+            </div>
+            <div class="sidebar-section-content">
+                <div class="project-list">
+                    <div class="project-item active" onclick="selectProject(this)">
+                        <div class="project-item-icon">📊</div>
+                        <div class="project-item-content"><div class="project-item-title">РГ по ШК-7</div></div>
+                        <button class="project-item-menu">⋯</button>
+                    </div>
+                    <div class="project-item" onclick="selectProject(this)">
+                        <div class="project-item-icon">📋</div>
+                        <div class="project-item-content"><div class="project-item-title">ИПР 2026</div></div>
+                        <button class="project-item-menu"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section" id="chatsSection">
+            <div class="sidebar-section-header" onclick="toggleSection('chatsSection')">
+                <div class="sidebar-section-title">💬 Чаты</div>
+                <div class="sidebar-section-toggle">▼</div>
+            </div>
+            <div class="sidebar-section-content">
+                <div class="chat-list">
+                    <div class="chat-item active" onclick="selectChat(this)">
+                        <div class="chat-item-icon">💬</div>
+                        <div class="chat-item-content">
+                            <div class="chat-item-title">Вот несколько вар...</div>
+                            <div class="chat-item-preview">Последнее сообщение...</div>
+                        </div>
+                        <button class="chat-item-menu" onclick="event.stopPropagation(); openModal('contextMenu')">⋯</button>
+                    </div>
+                    <div class="chat-item" onclick="selectChat(this)">
+                        <div class="chat-item-icon">📊</div>
+                        <div class="chat-item-content">
+                            <div class="chat-item-title">Работа со статусо...</div>
+                            <div class="chat-item-preview">Обновление статуса</div>
+                        </div>
+                        <button class="chat-item-menu" onclick="event.stopPropagation(); openModal('contextMenu')">⋯</button>
+                    </div>
+                    <div class="chat-item" onclick="selectChat(this)">
+                        <div class="chat-item-icon">🎯</div>
+                        <div class="chat-item-content">
+                            <div class="chat-item-title">Подготовка к УК</div>
+                            <div class="chat-item-preview">Анализ документов</div>
+                        </div>
+                        <button class="chat-item-menu" onclick="event.stopPropagation(); openModal('contextMenu')">⋯</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="content-area" id="chatContent" style="display: flex; flex-direction: column;">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message user">
+                    <div class="message-avatar"></div>
+                    <div class="message-content">
+                        <div class="message-bubble">Создай паспорт проекта для РГ по ШК-7</div>
+                        <div class="message-time">14:32</div>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn" title="Копировать" onclick="copyMessage(this)"></button>
+                        <button class="message-action-btn" title="Редактировать" onclick="editMessage(this)">✏️</button>
+                        <button class="message-action-btn" title="Удалить" onclick="deleteMessage(this)">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="message ai">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            <strong>Паспорт проекта "РГ по ШК-7" создан!</strong><br><br>
+                            <strong>Цель проекта:</strong> Разработка и внедрение системы контроля качества<br>
+                            <strong>Сроки:</strong> 01.09.2026 - 31.12.2026<br>
+                            <strong>Бюджет:</strong> 2.5 млн руб.<br>
+                            <strong>Ответственный:</strong> Иванов И.И.<br><br>
+                            Созданы рабочие чаты для всех этапов проекта.
+                        </div>
+                        <div class="message-time">14:33</div>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn" title="Копировать" onclick="copyMessage(this)"></button>
+                        <button class="message-action-btn" title="Сгенерировать заново" onclick="regenerateMessage(this)">🔄</button>
+                        <button class="message-action-btn" title="Сохранить в заметки" onclick="saveToNotes(this)">📝</button>
+                        <button class="message-action-btn" title="Сохранить в БД" onclick="saveToDB(this)"></button>
+                    </div>
+                </div>
+
+                <div class="message user">
+                    <div class="message-avatar">👤</div>
+                    <div class="message-content">
+                        <div class="message-bubble">Добавь риски в реестр</div>
+                        <div class="message-time">14:35</div>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn" title="Копировать" onclick="copyMessage(this)">📋</button>
+                        <button class="message-action-btn" title="Редактировать" onclick="editMessage(this)">✏️</button>
+                        <button class="message-action-btn" title="Удалить" onclick="deleteMessage(this)">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="message ai">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="message-bubble">
+                            Добавлены следующие риски:<br><br>
+                            1. <strong>Риск задержки поставок</strong> (Вероятность: средняя, Влияние: высокое)<br>
+                            2. <strong>Риск превышения бюджета</strong> (Вероятность: низкая, Влияние: среднее)<br>
+                            3. <strong>Риск изменения требований</strong> (Вероятность: высокая, Влияние: среднее)<br><br>
+                            Реестр рисков обновлен в базе данных проекта.
+                        </div>
+                        <div class="message-time">14:36</div>
+                    </div>
+                    <div class="message-actions">
+                        <button class="message-action-btn" title="Копировать" onclick="copyMessage(this)">📋</button>
+                        <button class="message-action-btn" title="Сгенерировать заново" onclick="regenerateMessage(this)">🔄</button>
+                        <button class="message-action-btn" title="Сохранить в заметки" onclick="saveToNotes(this)"></button>
+                        <button class="message-action-btn" title="Сохранить в БД" onclick="saveToDB(this)">💾</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-area notes-container" id="notesContent" style="display: none;">
+            <div class="notes-sidebar">
+                <div class="notes-sidebar-header">
+                    <div class="notes-sidebar-title"> Мои заметки</div>
+                    <button class="btn-primary" style="padding: 6px 12px; font-size: 11px;" onclick="createNewNote()">+ Новая</button>
+                </div>
+                <div class="notes-list" id="notesList">
+                    <div class="note-item active" onclick="selectNote(this)">
+                        <div class="note-item-title">Идеи для проекта</div>
+                        <div class="note-item-preview">Основные направления развития...</div>
+                        <div class="note-item-date">Сегодня, 14:20</div>
+                    </div>
+                    <div class="note-item" onclick="selectNote(this)">
+                        <div class="note-item-title">Встреча с клиентом</div>
+                        <div class="note-item-preview">Обсудили сроки и бюджет...</div>
+                        <div class="note-item-date">Вчера, 16:45</div>
+                    </div>
+                    <div class="note-item" onclick="selectNote(this)">
+                        <div class="note-item-title">Список задач</div>
+                        <div class="note-item-preview">1. Подготовить презентацию...</div>
+                        <div class="note-item-date">08.09.2026</div>
+                    </div>
+                </div>
+            </div>
+            <div class="notes-editor">
+                <div class="notes-editor-header">
+                    <input type="text" class="notes-editor-title" placeholder="Название заметки" value="Идеи для проекта">
+                </div>
+                <div class="notes-toolbar">
+                    <button class="notes-toolbar-btn"><b>Ж</b></button>
+                    <button class="notes-toolbar-btn"><i>К</i></button>
+                    <button class="notes-toolbar-btn"><u>Ч</u></button>
+                    <button class="notes-toolbar-btn">• Список</button>
+                    <button class="notes-toolbar-btn">🔗 Ссылка</button>
+                </div>
+                <textarea class="notes-editor-content" placeholder="Начните писать заметку...">Основные направления развития:
+
+1. Автоматизация отчетности
+   - Интеграция с Confluence
+   - Шаблоны документов
+   
+2. Улучшение коммуникации
+   - Еженедельные статус-митинги
+   - Прозрачность процессов
+
+3. Оптимизация ресурсов
+   - Перераспределение задач
+   - Привлечение внешних специалистов</textarea>
+            </div>
+        </div>
+
+        <div class="input-area" id="inputArea">
+            <div class="input-container">
+                <textarea class="input-field" placeholder="Начните диалог — напишите сообщение ниже..." id="messageInput"></textarea>
+                <div class="input-actions">
+                    <div class="input-tools">
+                        <button class="tool-btn" onclick="openModal('filePickerModal')">📎 Файлы</button>
+                        
+                        <div class="dropdown-wrapper">
+                            <button class="tool-btn" onclick="toggleDropdown('dbDropdown', this, event)">
+                                🗄️ БД <span class="badge" id="dbBadge" style="display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu" id="dbDropdown">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-title">Базы данных (SQLite)</div>
+                                    <div class="dropdown-subtitle">Выберите БД для использования в чате</div>
+                                </div>
+                                <div class="dropdown-list">
+                                    <div class="dropdown-item" onclick="toggleDropdownItem(this, 'db')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🗄️</div>
+                                        <div class="dropdown-item-text">
+                                            <div class="dropdown-item-title">test</div>
+                                            <div class="dropdown-item-meta">7 таблиц · 11 записей</div>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown-item" onclick="toggleDropdownItem(this, 'db')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🗄️</div>
+                                        <div class="dropdown-item-text">
+                                            <div class="dropdown-item-title">Тест</div>
+                                            <div class="dropdown-item-meta">Проект: ипиниааыич · 8 таблиц</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="dropdown-footer">
+                                    <button class="dropdown-btn-reset" onclick="resetDropdown('dbDropdown', 'db')">Сбросить</button>
+                                    <button class="dropdown-btn-done" onclick="closeDropdown('dbDropdown', 'db')">Готово</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dropdown-wrapper">
+                            <button class="tool-btn" onclick="toggleDropdown('skillsDropdown', this, event)">
+                                🎯 Навыки <span class="badge" id="skillsBadge" style="display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu" id="skillsDropdown">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-title">Навыки</div>
+                                    <div class="dropdown-subtitle">Активные навыки ассистента</div>
+                                </div>
+                                <div class="dropdown-list">
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'skills')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">📋</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Работа с паспортом проекта</div></div>
+                                    </div>
+                                    <div class="dropdown-item" onclick="toggleDropdownItem(this, 'skills')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">⚠️</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Работа с рисками</div></div>
+                                    </div>
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'skills')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">📊</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Работа со статусом проекта</div></div>
+                                    </div>
+                                    <div class="dropdown-item" onclick="toggleDropdownItem(this, 'skills')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">📝</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Работа с протоколами встреч</div></div>
+                                    </div>
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'skills')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🎯</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Подготовка к УК</div></div>
+                                    </div>
+                                </div>
+                                <div class="dropdown-footer">
+                                    <button class="dropdown-btn-reset" onclick="resetDropdown('skillsDropdown', 'skills')">Сбросить</button>
+                                    <button class="dropdown-btn-done" onclick="closeDropdown('skillsDropdown', 'skills')">Готово</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dropdown-wrapper">
+                            <button class="tool-btn" onclick="toggleDropdown('toolsDropdown', this, event)">
+                                🛠️ Инструменты <span class="badge" id="toolsBadge" style="display:none;">0</span>
+                            </button>
+                            <div class="dropdown-menu" id="toolsDropdown">
+                                <div class="dropdown-header">
+                                    <div class="dropdown-title">Инструменты</div>
+                                    <div class="dropdown-subtitle">Доступные инструменты ассистента</div>
+                                </div>
+                                <div class="dropdown-list">
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'tools')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🛠️</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Создание паспорта проекта</div></div>
+                                    </div>
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'tools')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🛠️</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Создание реестра рисков</div></div>
+                                    </div>
+                                    <div class="dropdown-item" onclick="toggleDropdownItem(this, 'tools')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">🛠️</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Создание статуса проекта</div></div>
+                                    </div>
+                                    <div class="dropdown-item selected" onclick="toggleDropdownItem(this, 'tools')">
+                                        <div class="dropdown-checkbox"></div>
+                                        <div class="dropdown-item-icon">️</div>
+                                        <div class="dropdown-item-text"><div class="dropdown-item-title">Создание презентации в PPTX</div></div>
+                                    </div>
+                                </div>
+                                <div class="dropdown-footer">
+                                    <button class="dropdown-btn-reset" onclick="resetDropdown('toolsDropdown', 'tools')">Сбросить</button>
+                                    <button class="dropdown-btn-done" onclick="closeDropdown('toolsDropdown', 'tools')">Готово</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="send-btn" onclick="sendMessage()">Отправить</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- НАСТРОЙКИ -->
+<div class="modal-overlay" id="settingsModal">
+    <div class="modal settings-modal">
+        <div class="modal-header">
+            <div class="modal-title">⚙️ Настройки</div>
+            <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+        </div>
+        <div class="settings-tabs">
+            <button class="settings-tab active" onclick="switchSettingsTab(event, 'tabModel')">Модель</button>
+            <button class="settings-tab" onclick="switchSettingsTab(event, 'tabInterface')">Интерфейс</button>
+            <button class="settings-tab" onclick="switchSettingsTab(event, 'tabSkills')">Навыки</button>
+            <button class="settings-tab" onclick="switchSettingsTab(event, 'tabTools')">Инструменты</button>
+            <button class="settings-tab" onclick="switchSettingsTab(event, 'tabDB')">Базы данных</button>
+        </div>
+        <div class="modal-body">
+            <div class="tab-content active" id="tabModel">
+                <div class="settings-section">
+                    <div class="settings-section-title">Параметры модели (сохраняются в config.json)</div>
+                    <div class="form-group">
+                        <label class="form-label">API-ключ</label>
+                        <div class="api-key-input">
+                            <input type="password" class="input" value="sk-xxxxxxxxxxxxxxxxxxxxxxxx" id="apiKey">
+                            <button class="api-key-toggle" onclick="toggleApiKey()">👁</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Провайдер LLM</label>
+                        <select class="select">
+                            <option>DeepSeek</option>
+                            <option>OpenAI</option>
+                            <option>Anthropic</option>
+                            <option>Local (Ollama)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Base URL API (до /chat/completions)</label>
+                        <input type="text" class="input" value="https://api.deepseek.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Модель</label>
+                        <select class="select">
+                            <option>deepseek-chat</option>
+                            <option>deepseek-coder</option>
+                            <option>deepseek-reasoner</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Temperature (креативность)</label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" min="0" max="2" step="0.1" value="0.1" oninput="updateSliderValue(this, 'tempValue')">
+                            <div class="slider-value" id="tempValue">0.1</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Max tokens (макс. длина ответа)</label>
+                        <input type="number" class="input" value="1000">
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabInterface">
+                <div class="settings-section">
+                    <div class="settings-section-title">Настройки интерфейса (сохраняются в settings.json)</div>
+                    <div class="toggle-row">
+                        <div class="toggle-label">Автообновление БД</div>
+                        <label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-label">Показывать использование навыков/инструментов/БД в чате</div>
+                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-label">Подтверждать запись изменений в БД (спрашивать перед db_execute)</div>
+                        <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Тема оформления</div>
+                    <div class="theme-options">
+                        <button class="theme-option active">🌙 Dark</button>
+                        <button class="theme-option">☀️ Light</button>
+                        <button class="theme-option">🔵 Blue</button>
+                        <button class="theme-option">🟢 Green</button>
+                        <button class="theme-option">🟣 Purple</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Дневной лимит токенов (0 — без лимита)</div>
+                    <input type="number" class="input" value="100000000" id="tokenLimit">
+                    <div class="token-limit-display">
+                        Сегодня потрачено: 0 тк (≈ $0) · лимит 100,00M · осталось 100,00M
+                        <div class="token-progress"><div class="token-progress-bar"></div></div>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="settings-section-title">Резервное копирование</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-secondary" onclick="showToast('success', 'Бэкап создан', 'settings.json скопирован')">📦 Создать бэкап</button>
+                        <button class="btn-secondary">📥 Восстановить из бэкапа</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabSkills">
+                <div class="skills-layout">
+                    <div class="skills-sidebar">
+                        <div class="skills-sidebar-title">Список навыков</div>
+                        <div class="skill-item active" onclick="selectSkill(this)"><div class="skill-item-icon">📋</div><div class="skill-item-title">Работа с паспортом проекта</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">⚠️</div><div class="skill-item-title">Работа с рисками</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">📅</div><div class="skill-item-title">Работа с планом проекта</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">📊</div><div class="skill-item-title">Работа со статусом проекта</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">📝</div><div class="skill-item-title">Работа с протоколами встреч</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">🎯</div><div class="skill-item-title">Подготовка к УК</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">🔍</div><div class="skill-item-title">Проверка страницы проекта</div></div>
+                        <button class="btn-secondary" style="margin-top: 8px; width: 100%;">➕ Добавить навык</button>
+                    </div>
+                    <div class="skill-editor">
+                        <div class="skill-editor-title">Добавить / редактировать навык</div>
+                        <div class="form-group">
+                            <label class="form-label">Название навыка</label>
+                            <input type="text" class="input" placeholder="Введите название">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Описание</label>
+                            <textarea class="input textarea" placeholder="Описание навыка..."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Код/шаблон (опционально)</label>
+                            <textarea class="input textarea" placeholder="Системный промпт или шаблон..." style="font-family: var(--font-mono); font-size: 13px;"></textarea>
+                        </div>
+                        <div class="toggle-row">
+                            <div class="toggle-label">Включён</div>
+                            <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                            <button class="btn-ghost">Очистить</button>
+                            <button class="btn-danger">Удалить</button>
+                            <button class="btn-primary" onclick="showToast('success', 'Сохранено', 'Навык обновлён')">Сохранить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabTools">
+                <div class="skills-layout">
+                    <div class="skills-sidebar">
+                        <div class="skills-sidebar-title">Список инструментов</div>
+                        <div class="skill-item active" onclick="selectSkill(this)"><div class="skill-item-icon">🛠️</div><div class="skill-item-title">Создание паспорта проекта</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">🛠️</div><div class="skill-item-title">Создание реестра рисков</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">🛠️</div><div class="skill-item-title">Создание статуса проекта</div></div>
+                        <div class="skill-item" onclick="selectSkill(this)"><div class="skill-item-icon">🛠️</div><div class="skill-item-title">Создание презентации в PPTX</div></div>
+                        <button class="btn-secondary" style="margin-top: 8px; width: 100%;">➕ Добавить инструмент</button>
+                    </div>
+                    <div class="skill-editor">
+                        <div class="skill-editor-title">Добавить / редактировать инструмент</div>
+                        <div class="form-group">
+                            <label class="form-label">Название инструмента</label>
+                            <input type="text" class="input" placeholder="Введите название">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Тип</label>
+                            <select class="select">
+                                <option>http</option>
+                                <option>command</option>
+                                <option>script</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Endpoint / команда</label>
+                            <textarea class="input textarea" placeholder="https://api.example.com/..." style="font-family: var(--font-mono); font-size: 13px;"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Описание</label>
+                            <textarea class="input textarea" placeholder="Описание инструмента..."></textarea>
+                        </div>
+                        <div class="toggle-row">
+                            <div class="toggle-label">Включён</div>
+                            <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+                        </div>
+                        <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                            <button class="btn-ghost">Очистить</button>
+                            <button class="btn-danger">Удалить</button>
+                            <button class="btn-primary" onclick="showToast('success', 'Сохранено', 'Инструмент обновлён')">Сохранить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tabDB">
+                <div class="settings-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div class="settings-section-title" style="margin: 0; border: none; padding: 0;">🗄️ Базы данных</div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-secondary" onclick="openModal('filePickerModal')">📁 Создать БД из файлов</button>
+                            <button class="btn-primary" onclick="showToast('success', 'БД подключена', 'Новая база данных добавлена')">➕ Добавить (подключить) БД</button>
+                        </div>
+                    </div>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">
+                        Подключаются базы данных SQLite (файлы .db). Серверные СУБД (PostgreSQL, MySQL) поддерживаются через инструменты.
+                    </p>
+                    <div class="db-list">
+                        <div class="db-card">
+                            <div class="db-card-icon">🗄️</div>
+                            <div class="db-card-content">
+                                <div class="db-card-title">test</div>
+                                <div class="db-card-meta"><span>SQLite</span><span>•</span><span>7 таблиц</span><span>•</span><span>11 записей</span></div>
+                                <div class="db-card-path">C:\Users\sergey.chikilev\CorporateAgent v3\databases\test.db</div>
+                                <div class="db-card-status">Активна • Использований: 0</div>
+                            </div>
+                        </div>
+                        <div class="db-card">
+                            <div class="db-card-icon">🗄️</div>
+                            <div class="db-card-content">
+                                <div class="db-card-title">Тест</div>
+                                <div class="db-card-meta"><span>SQLite</span><span>•</span><span>Проект: ипиниааыич</span><span>•</span><span>8 таблиц</span><span>•</span><span>0 записей</span></div>
+                                <div class="db-card-path">C:\Users\sergey.chikilev\CorporateAgent v3\databases\Тест.db</div>
+                                <div class="db-card-status">Активна • Использований: 0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('settingsModal')">Отмена</button>
+            <button class="btn-primary" onclick="showToast('success', 'Сохранено', 'Настройки применены'); closeModal('settingsModal')">Сохранить</button>
+        </div>
+    </div>
+</div>
+
+<!-- СОЗДАНИЕ ПРОЕКТА -->
+<div class="modal-overlay" id="projectModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">📁 Создать проект</div>
+            <button class="modal-close" onclick="closeModal('projectModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">
+                Будет создана база данных проекта (tasks, risks, meetings, ...) и 7 рабочих чатов-ролей. Каждый чат настроен на БД проекта + «Методология LPG» (только чтение) и профильные навыки/инструменты.
+            </p>
+            <div class="wizard-progress">
+                <div class="wizard-step-indicator active" data-step="1"><div class="step-number">1</div><div class="step-label">Основное</div></div>
+                <div class="wizard-step-indicator" data-step="2"><div class="step-number">2</div><div class="step-label">База данных</div></div>
+                <div class="wizard-step-indicator" data-step="3"><div class="step-number">3</div><div class="step-label">Рабочие чаты</div></div>
+            </div>
+            <div class="wizard-step active" id="wizardStep1">
+                <div class="form-group">
+                    <label class="form-label">Название проекта</label>
+                    <input type="text" class="input" placeholder="Например: РГ по ШК-7">
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                    <button class="btn-primary" onclick="nextWizardStep(2)">Далее →</button>
+                </div>
+            </div>
+            <div class="wizard-step" id="wizardStep2">
+                <div class="form-group">
+                    <label class="form-label">Источник БД проекта</label>
+                    <div class="radio-group">
+                        <label class="radio-option selected" onclick="selectRadio(this)">
+                            <input type="radio" name="dbSource" checked>
+                            <div class="radio-indicator"></div>
+                            <div class="radio-text"><strong>Новая БД проекта</strong> (доменная схема)</div>
+                        </label>
+                        <label class="radio-option" onclick="selectRadio(this)">
+                            <input type="radio" name="dbSource">
+                            <div class="radio-indicator"></div>
+                            <div class="radio-text"><strong>Существующая БД из списка</strong></div>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="newDbFields">
+                    <label class="form-label">Имя БД проекта (латиница/цифры/_-)</label>
+                    <input type="text" class="input" placeholder="rg_shk_7" style="font-family: var(--font-mono);">
+                    <div class="form-hint">Только латинские буквы, цифры, подчёркивание и дефис</div>
+                </div>
+                <div class="form-group" id="existingDbFields" style="display: none;">
+                    <label class="form-label">Выберите существующую БД</label>
+                    <div class="db-list" style="max-height: 200px; overflow-y: auto;">
+                        <div class="db-select-item selected" onclick="selectDbItem(this)">
+                            <div class="db-card-icon" style="width: 36px; height: 36px; font-size: 18px;">🗄️</div>
+                            <div class="db-card-content">
+                                <div class="db-card-title">test</div>
+                                <div class="db-card-meta"><span>SQLite</span><span>•</span><span>7 таблиц</span><span>•</span><span>11 записей</span></div>
+                            </div>
+                        </div>
+                        <div class="db-select-item" onclick="selectDbItem(this)">
+                            <div class="db-card-icon" style="width: 36px; height: 36px; font-size: 18px;">🗄️</div>
+                            <div class="db-card-content">
+                                <div class="db-card-title">Тест</div>
+                                <div class="db-card-meta"><span>SQLite</span><span>•</span><span>Проект: ипиниааыич</span><span>•</span><span>8 таблиц</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+                    <button class="btn-secondary" onclick="nextWizardStep(1)">← Назад</button>
+                    <button class="btn-primary" onclick="nextWizardStep(3)">Далее →</button>
+                </div>
+            </div>
+            <div class="wizard-step" id="wizardStep3">
+                <div class="form-label" style="margin-bottom: 12px;">Будут созданы чаты:</div>
+                <div class="chat-preview-list">
+                    <div class="chat-preview-item"><div class="chat-preview-icon">📋</div><div class="chat-preview-name">Работа с паспортом проекта</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon">️</div><div class="chat-preview-name">Работа с рисками</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon">📅</div><div class="chat-preview-name">Работа с планом проекта</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon">📊</div><div class="chat-preview-name">Работа со статусом проекта</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon">📝</div><div class="chat-preview-name">Работа с протоколами встреч</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon">🎯</div><div class="chat-preview-name">Подготовка к УК</div></div>
+                    <div class="chat-preview-item"><div class="chat-preview-icon"></div><div class="chat-preview-name">Проверка страницы проекта в Confluence</div></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 24px;">
+                    <button class="btn-secondary" onclick="nextWizardStep(2)">← Назад</button>
+                    <button class="btn-primary" onclick="showToast('success', 'Проект создан', 'Создана БД и 7 рабочих чатов'); closeModal('projectModal')">✓ Создать проект</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- КОНТЕКСТНОЕ МЕНЮ -->
+<div class="modal-overlay" id="contextMenu">
+    <div class="context-menu" style="max-width: 400px;">
+        <div class="context-menu-header">
+            <div class="context-menu-header-icon">💬</div>
+            <div class="context-menu-header-title">Чат: Вот несколько вариантов, разделенных по настроению</div>
+        </div>
+        <div class="context-menu-actions">
+            <button class="context-menu-action" onclick="showToast('success', 'Переименовано', 'Название чата изменено'); closeModal('contextMenu')">✏️ Переименовать</button>
+            <button class="context-menu-action" onclick="showToast('success', 'Перемещено', 'Чат перемещён в проект'); closeModal('contextMenu')">📁 Переместить в проект...</button>
+            <button class="context-menu-action danger" onclick="showToast('error', 'Удалено', 'Чат удалён'); closeModal('contextMenu')">🗑️ Удалить</button>
+            <button class="context-menu-action" onclick="closeModal('contextMenu')"> Отмена</button>
+        </div>
+    </div>
+</div>
+
+<!-- FILE PICKER -->
+<div class="modal-overlay" id="filePickerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <div class="modal-title">📎 Выберите файлы для анализа</div>
+            <button class="modal-close" onclick="closeModal('filePickerModal')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="file-drop-zone" id="dropZone">
+                <div class="file-drop-zone-icon">📤</div>
+                <div class="file-drop-zone-title">Перетащите файлы сюда</div>
+                <div class="file-drop-zone-desc">или нажмите, чтобы выбрать с компьютера</div>
+                <div style="margin-top: 16px;"><span class="btn-primary">Выбрать файлы</span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeModal('filePickerModal')">Отмена</button>
+            <button class="btn-primary" onclick="showToast('success', 'Загружено', 'Файлы добавлены для анализа'); closeModal('filePickerModal')">Загрузить</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/prototype-raw.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

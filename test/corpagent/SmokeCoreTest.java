@@ -65,6 +65,7 @@ public class SmokeCoreTest {
         testApiStaticHandler();
         testApiAuth();
         testApiResponse();
+        testWebPrototypeAssets();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1489,6 +1490,76 @@ public class SmokeCoreTest {
         } catch (Exception e) {
             check(false, "testApiResponse: " + e);
         }
+    }
+
+    // 38) Этап 2 (v4): статика прототипа v2 перенесена в web/ дословно.
+    //     Проверяем, что ключевые файлы отдаются StaticHandler'ом, index.html ссылается
+    //     на prototype.css/raw.js, а разметка содержит опорные узлы прототипа
+    //     (sidebar, main-content, заметки, модалки). Не требует поднятия сервера.
+    private static void testWebPrototypeAssets() {
+        try {
+            java.io.File web = new java.io.File("web");
+            if (!web.isDirectory()) {
+                System.out.println("  [SKIP] web/ не найден (тест из корня проекта). Тест пропущен.");
+                return;
+            }
+            Class<?> sh = Class.forName("corpagent.api.StaticHandler");
+            Object handler = sh.getConstructor(String.class).newInstance(web.getPath());
+            java.lang.reflect.Method resolve = sh.getMethod("resolveSafeFile", String.class);
+            java.lang.reflect.Method mime = sh.getMethod("mimeType", String.class);
+
+            // Все ключевые ассеты прототипа доступны через безопасный резолвер.
+            Object index = resolve.invoke(handler, "/index.html");
+            Object css = resolve.invoke(handler, "/css/prototype.css");
+            Object js = resolve.invoke(handler, "/js/prototype-raw.js");
+            check(index instanceof java.io.File, "web/: index.html найден");
+            check(css instanceof java.io.File, "web/css/: prototype.css найден");
+            check(js instanceof java.io.File, "web/js/: prototype-raw.js найден");
+
+            // MIME ассетов корректны (иначе браузер не отрендерит CSS/JS).
+            check(((String) mime.invoke(null, "index.html")).startsWith("text/html"),
+                    "MIME index.html → text/html");
+            check(((String) mime.invoke(null, "prototype.css")).startsWith("text/css"),
+                    "MIME prototype.css → text/css");
+            check(((String) mime.invoke(null, "prototype-raw.js")).contains("javascript"),
+                    "MIME prototype-raw.js → application/javascript");
+
+            // index.html ссылается на CSS/JS прототипа и содержит его опорные узлы.
+            String html = readUtf8((java.io.File) index);
+            check(html.contains("css/prototype.css"),
+                    "index.html ссылается на prototype.css");
+            check(html.contains("js/prototype-raw.js"),
+                    "index.html ссылается на prototype-raw.js");
+            check(html.contains("class=\"title-bar\"") && html.contains("class=\"sidebar\"")
+                            && html.contains("class=\"main-content\""),
+                    "index.html содержит опорные узлы прототипа (title-bar/sidebar/main-content)");
+
+            // Специфичные для v2 расширения сохранены дословно.
+            check(html.contains("notesContent"), "index.html содержит экран Заметок (v2)");
+            check(html.contains("chatMessages"), "index.html содержит контейнер сообщений чата (v2)");
+            check(html.contains("settingsModal") && html.contains("projectModal"),
+                    "index.html содержит модалки Настройки и Проект");
+
+            // prototype.css — это дизайн-токены прототипа (system blue и т.п.).
+            String cssText = readUtf8((java.io.File) css);
+            check(cssText.contains("--color-primary: #007AFF"),
+                    "prototype.css содержит токен --color-primary: #007AFF");
+            check(cssText.contains(":root"), "prototype.css содержит блок :root дизайн-токенов");
+
+            // prototype-raw.js — behavior-скрипты прототипа.
+            String jsText = readUtf8((java.io.File) js);
+            check(jsText.contains("function openModal"),
+                    "prototype-raw.js содержит behavior openModal()");
+            check(jsText.contains("function sendMessage"),
+                    "prototype-raw.js содержит sendMessage()");
+        } catch (Exception e) {
+            check(false, "testWebPrototypeAssets: " + e);
+        }
+    }
+
+    private static String readUtf8(java.io.File f) throws java.io.IOException {
+        byte[] bytes = java.nio.file.Files.readAllBytes(f.toPath());
+        return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static Object getStatic(Class<?> owner, String field) throws Exception {
