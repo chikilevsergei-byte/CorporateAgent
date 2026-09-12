@@ -63,6 +63,11 @@ _analyze_*.java
 _analyze_*.class
 _compile_check.bat
 build_test/
+build_check/
+compile_out.txt
 *.tmp
 *.log
+
+# --- v4/web-ui: эталон-прототип, только источник для переноса, НЕ в git ---
+corporate-agent-prototype*.html
 
