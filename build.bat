@@ -130,6 +130,9 @@ echo Compiling sources...
     %SRC_DIR%\corpagent\llm\*.java ^
     %SRC_DIR%\corpagent\files\*.java ^
     %SRC_DIR%\corpagent\tools\*.java ^
+    %SRC_DIR%\corpagent\api\*.java ^
+    %SRC_DIR%\corpagent\api\routes\*.java ^
+    %SRC_DIR%\corpagent\api\dto\*.java ^
     %SRC_DIR%\corpagent\gui\*.java ^
     %SRC_DIR%\corpagent\*.java ^
     %SRC_DIR%\corpagent\App.java
@@ -161,6 +164,19 @@ if exist "%SRC_DIR%\corpagent\data\presets" (
 REM --- Create manifest ---
 echo Main-Class: %MAIN_CLASS%> dist\MANIFEST.MF
 echo.>> dist\MANIFEST.MF
+
+REM ============================================================
+REM  Copy web/ into the compiled classes so it is bundled in the
+REM  jar (and later also copied to dist\CorporateAgent_portable\web
+REM  by prepare_portable.bat).
+REM ============================================================
+if exist web (
+    echo Copying web/ into jar classpath...
+    xcopy /e /i /y web "%OUT_DIR%\web" >nul
+    echo Web assets copied to %OUT_DIR%\web
+) else (
+    echo [WARN] web/ folder not found - Web-UI will have no assets.
+)
 
 REM --- Build jar ---
 echo Building jar...

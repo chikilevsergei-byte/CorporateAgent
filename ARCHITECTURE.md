@@ -65,27 +65,45 @@ CorporateAgent v4/
 │   └── util/                         # без изменений (+ новый HttpClient для SSE-клиента, если нужен)
 │
 ├── web/                              # 🆕 Фронтенд (статика)
-│   ├── index.html                    # SPA-точка входа
+│   ├── index.html                    # SPA-точка входа (мастер-прототип v1 ∪ v2)
 │   ├── css/
+│   │   ├── prototype.css             # CSS из v1 + v2 (объединённый эталон)
 │   │   ├── base.css                  # reset, типографика, переменные темы
 │   │   ├── layout.css                # sidebar + main area
-│   │   ├── chat.css                  # сообщения, markdown
-│   │   └── components.css            # кнопки, инпуты, модалки
+│   │   ├── overrides.css             # правки под реальные данные
+│   │   └── screens/                  # стили по экранам
+│   │       ├── chat.css
+│   │       ├── notes.css             # 🆕 из v2
+│   │       ├── projects.css
+│   │       ├── settings.css
+│   │       ├── skills.css
+│   │       ├── tools.css
+│   │       └── databases.css
 │   ├── js/
 │   │   ├── app.js                    # роутинг, инициализация
 │   │   ├── api.js                    # обёртка над fetch + SSE
 │   │   ├── store.js                  # состояние (chats, projects, settings)
+│   │   ├── prototype-raw.js          # behavior-скрипты прототипа (на перенос)
+│   │   ├── prototype-bindings.js     # привязка моков прототипа к реальным API
 │   │   ├── views/
 │   │   │   ├── ChatView.js
+│   │   │   ├── NotesView.js          # 🆕 из v2
 │   │   │   ├── ProjectsView.js
-│   │   │   ├── SkillsView.js
 │   │   │   ├── SettingsView.js
+│   │   │   ├── SkillsView.js
+│   │   │   ├── ToolsView.js
 │   │   │   └── DatabasesView.js
 │   │   └── components/
-│   │       ├── Sidebar.js
-│   │       ├── Message.js
-│   │       ├── Markdown.js           # рендер markdown (marked.js локально)
-│   │       └── Modal.js
+│   │       ├── Sidebar.js            # с выпадающим списком проектов (v2)
+│   │       ├── Message.js            # с кнопками действий (v2)
+│   │       ├── ChatContextPanel.js   # 🆕 правая панель (v2)
+│   │       ├── Markdown.js
+│   │       ├── Modal.js
+│   │       ├── Toast.js
+│   │       ├── EmptyState.js
+│   │       ├── SkeletonLoader.js
+│   │       ├── WizardProgress.js
+│   │       └── DropZone.js
 │   └── assets/
 │       ├── icons/                    # SVG
 │       └── fonts/
@@ -223,3 +241,102 @@ xcopy /E /I /Y web dist\CorporateAgent_portable\web
 - [ ] Файлы скачиваются/загружаются.
 - [ ] Smoke-тест проходит.
 - [ ] Размер `dist/` не вырос более чем на 20% (папка `web/` — несколько сотен КБ).
+
+---
+
+## 8. Эталон UI: 100% перенос прототипа (v1 ∪ v2)
+
+Фронтенд — **дословный перенос** разметки/стилей/скриптов из мастер-прототипа:
+
+- `corporate-agent-prototype v1.html` — базовые экраны.
+- `corporate-agent-prototype v2.html` — дополнение к v1.
+- **Финальный UI = v1 ∪ v2.** При расхождении приоритет у v2.
+- Меняем только источник данных (моки → реальные `/api/*`); верстку, классы, отступы,
+  цвета и компоненты сохраняем один-в-один.
+- CSS прототипа → `web/css/prototype.css`, JS прототипа → `web/js/prototype-raw.js`,
+  привязки к API — в `web/js/prototype-bindings.js`.
+
+---
+
+## 9. API-эндпоинты (итого по v1 ∪ v2)
+
+| Метод | Путь | Назначение | Источник |
+|---|---|---|---|
+| POST | `/api/chat` | Отправить сообщение (sync) | v1 |
+| POST | `/api/chat/stream` | Стриминг (SSE) | v1 |
+| **PUT** | `/api/chat/{id}/message/{mid}` | Редактировать сообщение | **🆕 v2** |
+| **DELETE** | `/api/chat/{id}/message/{mid}` | Удалить сообщение | **🆕 v2** |
+| **POST** | `/api/chat/{id}/message/{mid}/regenerate` | Перегенерировать | **🆕 v2** |
+| **GET** | `/api/chat/{id}/context` | Получить контекст чата (БД, навыки, инструменты) | **🆕 v2** |
+| **PUT** | `/api/chat/{id}/context` | Обновить контекст чата | **🆕 v2** |
+| GET | `/api/projects` | Список проектов | v1 |
+| POST | `/api/projects` | Создать проект (включая `existing_db_id`) | v1 + v2 |
+| **GET/POST/PUT/DELETE** | `/api/notes` | Заметки | **🆕 v2** |
+| GET/PUT | `/api/settings` | Настройки (+ `POST /api/settings/test-llm`) | v1 |
+| GET/POST/PUT/DELETE | `/api/skills` | Навыки | v1 |
+| GET/POST/PUT/DELETE | `/api/tools` | Инструменты | v1 |
+| GET/POST/PUT/DELETE | `/api/databases` | БД | v1 |
+| POST | `/api/files/upload` | Загрузка файлов | v1 |
+| GET | `/api/files/download` | Скачивание файлов | v1 |
+| GET | `/api/system/health` | Health-check | v1 |
+| POST | `/api/system/shutdown` | Завершение работы | v1 |
+| GET | `/api/system/open-folder` | Открыть папку (output/, databases/) | v1 |
+
+---
+
+## 10. Матрица миграции Swing → Web
+
+Полное сопоставление всех 33 классов `gui/` с прототипами и решения по каждому.
+
+### ✅ Полное совпадение (переносим дословно в веб-компоненты)
+
+| Swing-класс | v1 | v2 | Веб-аналог |
+|---|---|---|---|
+| BaseDialog | ✅ | ✅ | Web Modal component |
+| Ui, UiTheme | ✅ | ✅ | CSS variables + design tokens |
+| ToggleSwitch | ✅ | ✅ | CSS toggle |
+| Toast | ✅ | ✅ | JS toast library |
+| EmptyState | ✅ | ✅ | CSS component |
+| SkeletonLoader | ✅ | ✅ | CSS skeleton animation |
+| WizardProgress | ✅ | ✅ | CSS stepper |
+| DropZone | ✅ | ✅ | JS drag&drop |
+| MessageBubble | ✅ | ✅ | Chat message component |
+| WelcomeView | ✅ | ✅ | Welcome screen |
+| ChatContextMenu | ✅ | ✅ | Context menu |
+| MainFrame | ✅ | ✅ | App layout (sidebar + main) |
+| SidebarPanel | ✅ | ✅ | Sidebar component |
+| ChatView | ✅ | ✅ | Chat view |
+| ChatChipsBar | ✅ | ✅ | Prompt chips |
+| CreateProjectDialog | ✅ | ✅ | Project wizard |
+| DbManagerView | ✅ | ✅ | DB list view |
+| DbCreateFromFilesDialog | ✅ | ✅ | DB from files |
+| SettingsDialog | ✅ | ✅ | Settings modal |
+| SettingsPanelModel | ✅ | ✅ | Settings tab Model |
+| SettingsPanelInterface | ✅ | ✅ | Settings tab Interface |
+| SettingsPanelSkills | ✅ | ✅ | Settings tab Skills |
+| SettingsPanelTools | ✅ | ✅ | Settings tab Tools |
+| SettingsPanelDatabases | ✅ | ✅ | Settings tab Databases |
+| SkillManagerView | ✅ | ✅ | Skills list |
+| SkillEditDialog | ✅ | ✅ | Skill editor |
+| ToolManagerView | ✅ | ✅ | Tools list |
+| ToolEditDialog | ✅ | ✅ | Tool editor |
+| FilePickerDialog | ✅ | ✅ | File upload modal |
+
+### 🆕 Есть в прототипах, НЕТ в Swing (добавляем в Java + фронтенд)
+
+| Фича из прототипа | Где в прототипе | Что делаем в v4 |
+|---|---|---|
+| **Раздел «Заметки»** | v2 sidebar + NotesView | API `GET/POST/PUT/DELETE /api/notes`; фронтенд `views/NotesView.js`. |
+| **Выпадающий список «Проекты»** | v2 sidebar | API `GET /api/projects` (есть); фронтенд — dropdown в sidebar. |
+| **Кнопки действий на сообщениях** | v2 ChatView (✏️🗑️ для user, 🔄📝👤 для assistant) | API edit/delete/regenerate сообщений; фронтенд — Message actions. |
+| **Structured data в assistant-сообщениях** | v2 ChatView (карточки с полями) | Рендер structured content (в `Agent` уже есть — только отрисовать). |
+| **ChatContextPanel (правая панель)** | v2 ChatView (табы Файлы/БД/Навыки/Инструменты) | API `GET/PUT /api/chat/{id}/context`; фронтенд `components/ChatContextPanel.js`. |
+| **Выбор «Существующая БД»** | v2 CreateProjectDialog (шаг 2) | `POST /api/projects` уже принимает `existing_db_id`; добавить radio в визард. |
+
+### ❓ Есть в Swing, НЕТ в прототипах (решения приняты)
+
+| Swing-класс | Что делает | Решение |
+|---|---|---|
+| **UpdateProjectDbDialog** | Обновление БД проекта (upsert, выбор ветки при конфликте) | **B — автоматизировать, без UI.** Логика в `db_execute`, ветка выбирается автоматически + лог. Диалог удаляется. |
+| **DbViewerView** | Просмотр таблиц БД: схемы, SQL, экспорт CSV | **C — расширенная фича.** Кнопка «Просмотр» в DbManagerView → модалка с таблицами. |
+| **DbConnectDialog** | Подключение к внешним БД (PostgreSQL, MySQL, MongoDB, MSSQL, Oracle) | **C — расширенная фича.** Кнопка «Подключить внешнюю БД» в DbManagerView → модалка. |

@@ -1,5 +1,7 @@
 package corpagent;
 
+import corpagent.api.ApiBootstrap;
+import corpagent.api.ApiServer;
 import corpagent.data.DataStore;
 import corpagent.db.DatabaseManager;
 import corpagent.files.FileCreator;
@@ -35,8 +37,18 @@ public class App {
                     baseDir + java.io.File.separator + "databases",
                     baseDir + java.io.File.separator + "backups",
                     store);
-            FileCreator fileCreator = new FileCreator(baseDir + java.io.File.separator + "output", baseDir);
+                        FileCreator fileCreator = new FileCreator(baseDir + java.io.File.separator + "output", baseDir);
             Agent agent = new Agent(config, store, dbManager, fileCreator);
+
+            // Этап 1 (v4): поднимаем локальный HTTP-сервер и открываем браузер.
+            // Swing-окно пока работает параллельно — будет удалено на Этапе 6.
+            try {
+                ApiBootstrap.StartResult srv = ApiBootstrap.start(baseDir);
+                System.out.println("[App] Web-UI запущен на порту " + srv.port);
+                ApiBootstrap.openBrowser(srv.server.browsableUrl());
+            } catch (Exception webEx) {
+                System.err.println("[App] Не удалось запустить HTTP-сервер: " + webEx.getMessage());
+            }
 
             SwingUtilities.invokeLater(new Runnable() {
                 public void run() {
