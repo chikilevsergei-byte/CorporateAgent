@@ -64,6 +64,14 @@ if exist "config.json" (
     echo [!] config.json не найден - создайте его вручную с API-ключом.
 )
 
+REM --- Копируем статику Web-UI (web/) ---
+if exist web (
+    xcopy /e /i /y web "%PORTABLE%\web" >nul
+    echo [OK] Статика web\ скопирована
+) else (
+    echo [!] Папка web\ не найдена - Web-UI не будет отображаться.
+)
+
 REM --- Копируем JRE ---
 if exist "%JRE_SOURCE%\bin\java.exe" (
     echo Копирование JRE из %JRE_SOURCE% (может занять время)...
@@ -86,3 +94,19 @@ echo Для запуска у конечного пользователя без
 echo   откройте папку и запустите Start.bat
 echo.
 pause
+    echo     Скопируйте папку JRE вручную в "%PORTABLE%\jre"
+)
+
+REM --- Копируем портабельный запуск ---
+copy /y "run_portable.bat" "%PORTABLE%\Start.bat" >nul
+echo [OK] Start.bat создан
+
+echo.
+echo === Готово! ===
+echo Портабельный дистрибутив: %PORTABLE%
+echo.
+echo Для запуска у конечного пользователя без установки Java:
+echo   откройте папку и запустите Start.bat
+echo.
+pause
+

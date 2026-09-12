@@ -62,6 +62,9 @@ public class SmokeCoreTest {
         testWelcomeView();
         testMessageBubble();
         testBadgeIcon();
+        testApiStaticHandler();
+        testApiAuth();
+        testApiResponse();
         if (failed == 0) {
             System.out.println("SmokeCoreTest OK (" + checks + " проверок).");
         } else {
@@ -1343,6 +1346,148 @@ public class SmokeCoreTest {
             check(true, "BadgeIcon: paintIcon выполняется без ошибок");
         } catch (Exception e) {
             check(false, "testBadgeIcon: " + e);
+        }
+    }
+
+    // 35) Этап 1 (v4): статический слой HTTP-сервера — нормализация URL-пути,
+    //     защита от path traversal, определение MIME. Покрывает отдачу web/ из
+    //     портативного дистрибутива (задача 1.7) и не требует поднятия сервера.
+    private static void testApiStaticHandler() {
+        try {
+            Class<?> sh = Class.forName("corpagent.api.StaticHandler");
+
+            // normalizePath: "/" → index.html, query/hash отбрасываются, %xx декодируется.
+            java.lang.reflect.Method norm = sh.getMethod("normalizePath", String.class);
+            check("index.html".equals(norm.invoke(null, "/")),
+                    "normalizePath('/') → index.html");
+            check("index.html".equals(norm.invoke(null, (Object) null)),
+                    "normalizePath(null) → index.html");
+            check("css/base.css".equals(norm.invoke(null, "/css/base.css?x=1")),
+                    "normalizePath: query срезается");
+            check("js/app.js".equals(norm.invoke(null, "/js/app.js#frag")),
+                    "normalizePath: hash срезается");
+            check("a b.txt".equals(norm.invoke(null, "/a%20b.txt")),
+                    "normalizePath: %20 декодируется в пробел");
+            check("screens/chat.css".equals(norm.invoke(null, "/screens/chat.css")),
+                    "normalizePath: вложенный путь сохраняется");
+
+            // mimeType: ключевые типы фронтенда.
+            java.lang.reflect.Method mime = sh.getMethod("mimeType", String.class);
+            check(((String) mime.invoke(null, "index.html")).startsWith("text/html"),
+                    "mimeType: .html → text/html");
+            check(((String) mime.invoke(null, "style.css")).startsWith("text/css"),
+                    "mimeType: .css → text/css");
+            check(((String) mime.invoke(null, "app.js")).contains("javascript"),
+                    "mimeType: .js → application/javascript");
+            check("image/svg+xml".equals(mime.invoke(null, "icon.svg")),
+                    "mimeType: .svg → image/svg+xml");
+            check("application/octet-stream".equals(mime.invoke(null, "data.unknown")),
+                    "mimeType: неизвестное расширение → octet-stream");
+            check("application/octet-stream".equals(mime.invoke(null, "noext")),
+                    "mimeType: без расширения → octet-stream");
+
+            // resolveSafeFile: реальный файл внутри web/ находится, traversal — отклоняется.
+            java.io.File base = java.nio.file.Files.createTempDirectory("ca_static").toFile();
+            java.io.File web = new java.io.File(base, "web");
+            java.io.File css = new java.io.File(web, "css");
+            css.mkdirs();
+            java.io.File index = new java.io.File(web, "index.html");
+            java.io.File style = new java.io.File(css, "base.css");
+            index.createNewFile();
+            style.createNewFile();
+
+            Object handler = sh.getConstructor(String.class).newInstance(web.getPath());
+            java.lang.reflect.Method resolve = sh.getMethod("resolveSafeFile", String.class);
+
+            Object ok = resolve.invoke(handler, "/index.html");
+            check(ok instanceof java.io.File && ((java.io.File) ok).isFile(),
+                    "resolveSafeFile: существующий index.html найден");
+            Object cssFile = resolve.invoke(handler, "/css/base.css");
+            check(cssFile instanceof java.io.File && ((java.io.File) cssFile).getName().equals("base.css"),
+                    "resolveSafeFile: вложенный css найден");
+
+            // Path traversal отклоняется (null).
+            check(resolve.invoke(handler, "/../config.json") == null,
+                    "resolveSafeFile: '../' за пределы web/ отклонён");
+            check(resolve.invoke(handler, "/../../etc/passwd") == null,
+                    "resolveSafeFile: глубокий traversal отклонён");
+            // Несуществующий файл → null.
+            check(resolve.invoke(handler, "/missing.html") == null,
+                    "resolveSafeFile: отсутствующий файл → null");
+
+            // exists() корректно отражает наличие папки статики.
+            java.lang.reflect.Method exists = sh.getMethod("exists");
+            check(Boolean.TRUE.equals(exists.invoke(handler)),
+                    "StaticHandler.exists(): папка web/ найдена");
+
+            deleteRecursive(base);
+        } catch (Exception e) {
+            check(false, "testApiStaticHandler: " + e);
+        }
+    }
+
+    // 36) Этап 1 (v4): токен-авторизация API — формат Bearer, регистр схемы, отказ при null.
+    private static void testApiAuth() {
+        try {
+            Class<?> auth = Class.forName("corpagent.api.Auth");
+            Object a = auth.getMethod("withToken", String.class).invoke(null, "ABC123");
+            java.lang.reflect.Method isValid = auth.getMethod("isValid", String.class);
+
+            check(Boolean.TRUE.equals(isValid.invoke(a, "Bearer ABC123")),
+                    "Auth: верный Bearer-токен проходит");
+            check(Boolean.TRUE.equals(isValid.invoke(a, "bearer ABC123")),
+                    "Auth: схема без учёта регистра");
+            check(Boolean.FALSE.equals(isValid.invoke(a, (Object) null)),
+                    "Auth: null-заголовок отклонён");
+            check(Boolean.FALSE.equals(isValid.invoke(a, "Bearer wrong")),
+                    "Auth: неверный токен отклонён");
+            check(Boolean.FALSE.equals(isValid.invoke(a, "ABC123")),
+                    "Auth: без схемы Bearer отклонён");
+
+            java.lang.reflect.Method gen = auth.getMethod("generateToken");
+            String t1 = (String) gen.invoke(null);
+            String t2 = (String) gen.invoke(null);
+            check(t1 != null && t1.length() == 32, "Auth.generateToken(): длина 32");
+            check(!t1.equals(t2), "Auth.generateToken(): токены уникальны");
+        } catch (Exception e) {
+            check(false, "testApiAuth: " + e);
+        }
+    }
+
+    // 37) Этап 1 (v4): ApiResponse — единый формат {ok,data|error} и HTTP-статусы.
+    private static void testApiResponse() {
+        try {
+            Class<?> cls = Class.forName("corpagent.api.ApiResponse");
+
+            Object ok = cls.getMethod("ok", Object.class).invoke(null, "payload");
+            java.lang.reflect.Method okFlag = cls.getMethod("isOk");
+            java.lang.reflect.Method status = cls.getMethod("getHttpStatus");
+            java.lang.reflect.Method toJson = cls.getMethod("toJson");
+            check(Boolean.TRUE.equals(okFlag.invoke(ok)), "ApiResponse.ok: isOk()==true");
+            check((Integer) status.invoke(ok) == 200, "ApiResponse.ok: статус 200");
+            String json = (String) toJson.invoke(ok);
+            check(json.contains("\"ok\"") && json.contains("payload"),
+                    "ApiResponse.ok: JSON содержит ok и data");
+
+            Object created = cls.getMethod("ok", Object.class, int.class)
+                    .invoke(null, "x", 201);
+            check((Integer) status.invoke(created) == 201, "ApiResponse.ok(data,201): статус 201");
+
+            Object bad = cls.getMethod("badRequest", String.class).invoke(null, "плохо");
+            check(Boolean.FALSE.equals(okFlag.invoke(bad)), "ApiResponse.badRequest: isOk()==false");
+            check((Integer) status.invoke(bad) == 400, "ApiResponse.badRequest: статус 400");
+            String errJson = (String) toJson.invoke(bad);
+            check(errJson.contains("\"error\"") && errJson.contains("плохо"),
+                    "ApiResponse.badRequest: JSON содержит error");
+
+            check((Integer) status.invoke(cls.getMethod("unauthorized").invoke(null)) == 401,
+                    "ApiResponse.unauthorized: статус 401");
+            check((Integer) status.invoke(cls.getMethod("notFound", String.class).invoke(null, "n")) == 404,
+                    "ApiResponse.notFound: статус 404");
+            check((Integer) status.invoke(cls.getMethod("serverError", String.class).invoke(null, "e")) == 500,
+                    "ApiResponse.serverError: статус 500");
+        } catch (Exception e) {
+            check(false, "testApiResponse: " + e);
         }
     }
 
