@@ -1,0 +1,29 @@
+/* CorporateAgent v4 — web/css/screens/notes.css
+   Этап 4.6: доработки экрана «Заметки» (порт из прототипа v2 + реальные данные).
+   Базовые стили .notes-* уже в prototype.css — здесь только дополнения. */
+
+/* Активная заметка в списке (прототип: .note-item.active). */
+.note-item.active {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.25);
+}
+
+.note-item-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Кнопка удаления в тулбаре редактора прижата к правому краю. */
+.notes-toolbar .notes-toolbar-btn:last-child {
+    margin-left: auto;
+}
+
+/* Плейсхолдеры редактора заметки. */
+.notes-editor-title::placeholder,
+.notes-editor-content::placeholder {
+    color: var(--text-tertiary);
+}

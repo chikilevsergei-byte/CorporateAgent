@@ -1,0 +1,10 @@
+{
+  "name": "Методология LPG",
+  "description": "Предустановленная база данных с методологией LPG (Lean Process Governance). Содержит справочники процессов, шаблоны, правила иbest practices. Только для чтения, не редактируется.",
+  "path": "databases/lpg_methodology.db",
+  "schema": "CREATE TABLE processes (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    name TEXT NOT NULL,\n    category TEXT,\n    description TEXT,\n    inputs TEXT,\n    outputs TEXT,\n    rules TEXT\n);\n\nCREATE TABLE templates (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    name TEXT NOT NULL,\n    type TEXT,\n    content TEXT,\n    usage_instructions TEXT\n);\n\nCREATE TABLE rules (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    category TEXT,\n    rule TEXT NOT NULL,\n    description TEXT,\n    severity TEXT DEFAULT 'medium'\n);\n\nCREATE TABLE best_practices (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    title TEXT NOT NULL,\n    description TEXT,\n    category TEXT,\n    applicability TEXT\n);",
+  "tables_count": 4,
+  "records_count": 0,
+  "type": "sqlite",
+  "enabled": true
+}

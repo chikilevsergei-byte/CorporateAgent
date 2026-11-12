@@ -1,0 +1,93 @@
+/* CorporateAgent v4 — css/chat.css
+
+ * Этап 3.15: мелкие дополнения к чату поверх prototype.css.
+ * Основная верстка сообщений (.message*), чата (.chat-messages) и поля ввода
+ * уже перенесена дословно в prototype.css — здесь только то, что добавлено в v4.
+ */
+
+/* Пометка «изменено» рядом со временем сообщения. */
+.message-edited {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* Мигающий маркер во время стриминга ответа. */
+.message.ai .message-bubble.streaming::after {
+  content: '▋';
+  margin-left: 2px;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Инлайн-код и ссылки внутри сообщений (рендер markdown). */
+.message-bubble code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.message-bubble a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.message-bubble a:hover {
+  text-decoration: underline;
+}
+
+/* Кнопка отправки временно неактивна во время стриминга. */
+body.is-streaming .input-field {
+  opacity: 0.6;
+}
+
+/* 3.14: карточка structured data в assistant-сообщении (поля ответа). */
+.message-fields {
+  margin-top: 8px;
+  border: 0.5px solid var(--border-light);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.02);
+  overflow: hidden;
+}
+
+.message-field-row {
+  display: flex;
+  gap: 12px;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-bottom: 0.5px solid var(--border-light);
+}
+
+.message-field-row:last-child {
+  border-bottom: none;
+}
+
+.message-field-label {
+  flex: 0 0 40%;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.message-field-value {
+  flex: 1 1 60%;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.chat-actions-menu,.chat-move-dialog { position:fixed; z-index:10000; padding:12px; background:var(--bg-modal, #fff); color:var(--text-primary,#222); border:1px solid var(--border-medium,#ddd); border-radius:12px; box-shadow:0 8px 30px #0003; }
+.chat-actions-menu { display:flex; flex-direction:column; min-width:210px; }
+.chat-actions-menu button,.chat-move-dialog button { padding:9px 12px; text-align:left; border:0; background:transparent; color:inherit; cursor:pointer; }
+.chat-actions-menu button:hover,.chat-move-dialog button:hover { background:#8882; }
+.chat-actions-menu button:disabled { opacity:.5; cursor:wait; }
+.chat-move-dialog { top:30%; left:50%; transform:translateX(-50%); width:min(360px,90vw); }
+.chat-move-dialog select { display:block; width:100%; padding:8px; margin:12px 0; }
+.chat-attachments { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+.chat-attachment { display:inline-flex; align-items:center; gap:8px; background:#8882; border-radius:8px; padding:6px 10px; font-size:12px; }
+.chat-attachment button { border:0; background:transparent; color:inherit; cursor:pointer; }
+.file-picker-item { display:flex; justify-content:space-between; gap:12px; }
+
+.chat-move-dialog select { background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-medium); border-radius:8px; }

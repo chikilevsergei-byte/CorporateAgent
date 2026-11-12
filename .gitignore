@@ -66,3 +66,18 @@ build_test/
 *.tmp
 *.log
 
+
+# Portable 5.4.5 build outputs and user state
+/versions/v5.4.5-portable/data/
+/versions/v5.4.5-portable/launch-logs/
+/versions/v5.4.5-portable/jre/
+/versions/v5.4.5-portable/downloads/
+/versions/v5.4.5-portable/releases/
+/versions/v5.4.5-portable/verification/
+/versions/v5.4.5-portable/staging/
+/versions/v5.4.5-portable/.build-tools/
+/versions/v5.4.5-portable/launcher.jar
+__pycache__/
+!/versions/v5.4.5-portable/src/corpagent/data/presets/*.json
+!/versions/v5.4.5-portable/src/corpagent/data/presets/databases/
+!/versions/v5.4.5-portable/src/corpagent/data/presets/databases/*.json

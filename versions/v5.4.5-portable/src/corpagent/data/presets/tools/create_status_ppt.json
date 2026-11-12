@@ -1,0 +1,7 @@
+{
+  "name": "Создание статуса проекта в PPT",
+  "description": "Генерирует презентацию статуса проекта: что сделано, что в работе, риски, блокеры, следующий спринт. Данные из БД проекта.",
+  "type": "http",
+  "endpoint": "agent:create_status_ppt",
+  "code": "function create_status_ppt(db_name, project_id):\n    # Извлекает данные для статуса\n    done_tasks = db.query('SELECT * FROM tasks WHERE project_id = ? AND status = ?', [project_id, 'done'])\n    in_progress = db.query('SELECT * FROM tasks WHERE project_id = ? AND status = ?', [project_id, 'in_progress'])\n    risks = db.query('SELECT * FROM risks WHERE project_id = ? AND status = ?', [project_id, 'open'])\n    # Формирует PPTX с 5-7 слайдами\n    content = generate_status_presentation(done_tasks, in_progress, risks)\n    return file_creator.createPptx(content, corporate_status_template)"
+}

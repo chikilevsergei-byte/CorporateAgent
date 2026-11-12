@@ -1,0 +1,166 @@
+/* CorporateAgent v4 — css/screens/screens.css
+   Этап 5.1-F/5.2-F/5.3-F/5.4-F: стили экранов «Проекты», редакторов навыков/инструментов
+   и раздела «Базы данных». Классы совместимы с прототипом v2 (skill-item/db-card). */
+
+/* ---- Список навыков/инструментов ---- */
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-empty,
+.db-empty,
+.projects-empty {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.skill-editor-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ---- Карточки БД: действия ---- */
+.db-card {
+  position: relative;
+}
+
+.db-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.db-card-actions .btn-ghost,
+.db-card-actions .btn-danger {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.db-empty {
+  border: 1px dashed var(--border, #333);
+  border-radius: 8px;
+}
+
+/* ---- Просмотр БД (5.c) ---- */
+.db-view-loading {
+  padding: 24px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.db-view-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-right: 1px solid var(--border, #333);
+  padding-right: 12px;
+}
+
+.db-tab {
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.db-tab.active,
+.db-tab:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+  color: var(--text-primary, #fff);
+}
+
+.db-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.db-table th,
+.db-table td {
+  border: 1px solid var(--border, #333);
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.db-table th {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+  font-weight: 600;
+}
+
+/* ---- Экран «Проекты» (5.1-F) ---- */
+.projects-container {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.projects-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.projects-header-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.project-card {
+  border: 1px solid var(--border, #333);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.03));
+}
+
+.project-card.active {
+  border-color: var(--accent, #4a9eff);
+}
+
+.project-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.project-card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  min-height: 18px;
+}
+
+.project-card-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+}
+
+.project-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.project-card-actions .btn-ghost,
+.project-card-actions .btn-danger {
+  padding: 4px 10px;
+  font-size: 12px;
+}

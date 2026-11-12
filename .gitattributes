@@ -1,0 +1,3 @@
+# Keep the macOS launcher usable after checkout on Windows.
+versions/v5.4.5-portable/packaging/*.command text eol=lf
+versions/v5.4.5-portable/packaging/*.bat text eol=crlf
